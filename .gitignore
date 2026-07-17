@@ -1,0 +1,62 @@
+# ============================================================
+# LogLens .gitignore
+# 确保敏感信息、编译产物、系统文件不会被上传到 GitHub
+# ============================================================
+
+# ---- Node.js / 前端 ----
+node_modules/
+dist/
+*.local
+
+# ---- Rust / Tauri ----
+src-tauri/target/
+src-tauri/gen/          # Tauri 自动生成的代码（每次构建重新生成）
+
+# ---- 环境变量 & 敏感信息 ----
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+credentials.json
+
+# ---- 操作系统 ----
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ---- IDE / 编辑器 ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# ---- 调试 & 日志 ----
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tsbuildinfo
+
+# ---- Tauri 构建产物 ----
+# src-tauri/icons/ 需要保留，这是应用图标资源
+
+# ---- 测试覆盖率 ----
+coverage/
+.nyc_output/
+
+# ---- 临时文件 ----
+tmp/
+temp/
+*.tmp
+*.bak
