@@ -550,7 +550,7 @@ function AppearanceTab() {
                 <button
                   key={s}
                   onClick={() => setFontSize(s)}
-                  className="px-2 py-0.5 rounded text-xs transition-all duration-200 hover:opacity-80 active:scale-95"
+                  className="px-2 py-0.5 rounded text-xs transition-all duration-200"
                   style={{
                     background: fontSize === s ? 'rgba(37,99,235,0.2)' : 'var(--bg-overlay)',
                     color: fontSize === s ? '#60a5fa' : 'var(--text-muted)',
@@ -611,10 +611,16 @@ function ThemeCard({
     <button
       onClick={() => { if (!isActive) onSelect() }}
       className={clsx(
-        'flex flex-col items-center gap-2 rounded-xl p-3 border transition-all w-24',
+        'flex flex-col items-center gap-2 rounded-xl p-3 border transition-all duration-200 w-24',
         isActive ? 'border-blue-500 bg-blue-500/10' : 'border-border hover:border-border/80'
       )}
-      style={!isActive ? { borderColor: 'var(--border-default)', background: 'var(--bg-elevated)' } : {}}
+      style={!isActive ? {
+        borderColor: 'var(--border-default)',
+        background: 'var(--bg-elevated)',
+        boxShadow: 'var(--shadow-sm)'
+      } : {
+        boxShadow: 'var(--shadow-md)'
+      }}
     >
       <div
         className="w-16 h-10 rounded-lg flex items-center justify-center"
