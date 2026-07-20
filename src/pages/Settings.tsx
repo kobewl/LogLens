@@ -678,92 +678,284 @@ function AboutTab() {
 
   return (
     <TabLayout title="关于 LogLens" icon={<Info size={18} />}>
-      <div className="flex items-center gap-5 mb-6">
+      {/* ── Hero Section ── */}
+      <div
+        className="relative rounded-2xl overflow-hidden p-8 mb-6"
+        style={{
+          background: 'linear-gradient(135deg, #1e3a5f 0%, #0d1117 50%, #1a1a2e 100%)',
+        }}
+      >
+        {/* 背景装饰 */}
         <div
-          className="flex h-16 w-16 items-center justify-center rounded-2xl shrink-0"
-          style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)' }}
-        >
-          <Database size={28} className="text-white" />
-        </div>
-        <div>
-          <div className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>LogLens</div>
-          <div className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>版本 {currentVersion}</div>
-          <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-            Tauri 2 · React 19 · Rust
+          className="absolute top-0 right-0 w-48 h-48 opacity-20"
+          style={{
+            background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)',
+            transform: 'translate(30%, -30%)',
+          }}
+        />
+        <div
+          className="absolute bottom-0 left-0 w-32 h-32 opacity-10"
+          style={{
+            background: 'radial-gradient(circle, #6366f1 0%, transparent 70%)',
+            transform: 'translate(-30%, 30%)',
+          }}
+        />
+
+        <div className="relative flex items-center gap-6">
+          {/* Logo */}
+          <div className="relative">
+            <div
+              className="flex h-20 w-20 items-center justify-center rounded-2xl shrink-0"
+              style={{
+                background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)',
+                boxShadow: '0 8px 32px rgba(59, 130, 246, 0.4)',
+              }}
+            >
+              <Database size={36} className="text-white" />
+            </div>
+            {/* 版本徽章 */}
+            <div
+              className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+              style={{
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: 'white',
+                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
+              }}
+            >
+              v{currentVersion}
+            </div>
+          </div>
+
+          {/* 应用信息 */}
+          <div className="flex-1">
+            <h2
+              className="text-2xl font-bold mb-1"
+              style={{
+                background: 'linear-gradient(135deg, #ffffff 0%, #94a3b8 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              LogLens
+            </h2>
+            <p className="text-sm mb-3" style={{ color: '#94a3b8' }}>
+              下一代本地桌面日志分析工具
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {['Tauri 2', 'React 19', 'Rust', 'Vite'].map((tech) => (
+                <span
+                  key={tech}
+                  className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    color: '#94a3b8',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                  }}
+                >
+                  {tech}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
+      {/* ── 功能特性 ── */}
       <SettingGroup title="功能特性">
-        {[
-          { icon: <Monitor size={14} />, title: '本地日志分析', desc: '支持 JSON、格式化文本等多种日志格式，全文检索' },
-          { icon: <Cloud size={14} />, title: '云日志查询', desc: '一键连接阿里云 SLS、腾讯云 CLS、华为云 LTS' },
-          { icon: <BotMessageSquare size={14} />, title: 'AI 辅助分析', desc: '接入 DeepSeek、OpenAI 等，自然语言查询日志' },
-          { icon: <SettingsIcon size={14} />, title: 'MCP 服务器', desc: '将 LogLens 作为 MCP 工具供 AI 客户端直接调用' },
-        ].map((item, i) => (
-          <div
-            key={i}
-            className="flex items-start gap-3 py-3"
-            style={{ borderBottom: i < 3 ? `1px solid var(--border-default)` : undefined }}
-          >
+        <div className="grid grid-cols-2 gap-3 p-4">
+          {[
+            { icon: <Monitor size={16} />, title: '本地日志分析', desc: '支持多种日志格式，全文检索', color: '#3b82f6' },
+            { icon: <Cloud size={16} />, title: '云日志查询', desc: '阿里、腾讯、华为一键连接', color: '#6366f1' },
+            { icon: <BotMessageSquare size={16} />, title: 'AI 辅助分析', desc: '自然语言查询，智能异常检测', color: '#8b5cf6' },
+            { icon: <SettingsIcon size={16} />, title: 'MCP 服务器', desc: '供 AI 客户端直接调用', color: '#a855f7' },
+          ].map((item, i) => (
             <div
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg mt-0.5"
-              style={{ background: 'rgba(37,99,235,0.12)', color: '#60a5fa' }}
+              key={i}
+              className="flex items-start gap-3 p-3 rounded-xl transition-all duration-200 hover:scale-[1.02]"
+              style={{
+                background: 'var(--bg-overlay)',
+                border: '1px solid var(--border-default)',
+              }}
             >
-              {item.icon}
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                style={{
+                  background: `${item.color}20`,
+                  color: item.color,
+                }}
+              >
+                {item.icon}
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {item.title}
+                </div>
+                <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  {item.desc}
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{item.title}</div>
-              <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{item.desc}</div>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </SettingGroup>
 
       {/* ── 检查更新 ── */}
       <SettingGroup title="版本更新">
-        <div className="flex items-center justify-between py-2">
-          <div>
-            <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
-              {updateState === 'checking' && '正在检查更新…'}
-              {updateState === 'uptodate' && '✅ 已是最新版本'}
-              {updateState === 'available' && `🆕 发现新版本 v${latestVersion}`}
-              {updateState === 'error' && '检查失败，请稍后重试'}
-              {(updateState === 'idle') && '检查是否有新版本可用'}
-            </div>
-            {updateState === 'available' && (
-              <a
-                href={downloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs flex items-center gap-1 mt-1 hover:underline transition-colors duration-200"
-                style={{ color: '#60a5fa' }}
-              >
-                <Download size={12} /> 前往下载
-              </a>
-            )}
-          </div>
-          <button
-            onClick={checkUpdate}
-            disabled={updateState === 'checking'}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-all duration-200 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
+        <div className="p-4">
+          <div
+            className="flex items-center justify-between p-4 rounded-xl"
             style={{
-              background: 'var(--surface-hover)',
-              color: 'var(--text-secondary)',
+              background: 'var(--bg-overlay)',
+              border: '1px solid var(--border-default)',
             }}
           >
-            {updateState === 'checking' ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : (
-              <RefreshCw size={12} />
-            )}
-            检查更新
-          </button>
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-xl"
+                style={{
+                  background: updateState === 'available'
+                    ? 'rgba(16, 185, 129, 0.15)'
+                    : updateState === 'uptodate'
+                    ? 'rgba(59, 130, 246, 0.15)'
+                    : 'var(--surface-hover)',
+                  color: updateState === 'available'
+                    ? '#10b981'
+                    : updateState === 'uptodate'
+                    ? '#3b82f6'
+                    : 'var(--text-secondary)',
+                }}
+              >
+                {updateState === 'checking' ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : updateState === 'available' ? (
+                  <Download size={18} />
+                ) : (
+                  <RefreshCw size={18} />
+                )}
+              </div>
+              <div>
+                <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {updateState === 'checking' && '正在检查更新…'}
+                  {updateState === 'uptodate' && '已是最新版本'}
+                  {updateState === 'available' && `发现新版本 v${latestVersion}`}
+                  {updateState === 'error' && '检查失败，请稍后重试'}
+                  {(updateState === 'idle') && '检查是否有新版本可用'}
+                </div>
+                {updateState === 'available' && (
+                  <a
+                    href={downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs flex items-center gap-1 mt-1 hover:underline transition-colors duration-200"
+                    style={{ color: '#60a5fa' }}
+                  >
+                    <Download size={11} /> 前往下载
+                  </a>
+                )}
+                {updateState === 'uptodate' && (
+                  <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                    当前版本 {currentVersion}
+                  </div>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={checkUpdate}
+              disabled={updateState === 'checking'}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
+              style={{
+                background: updateState === 'available'
+                  ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                  : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                color: 'white',
+                boxShadow: updateState === 'available'
+                  ? '0 4px 12px rgba(16, 185, 129, 0.3)'
+                  : '0 4px 12px rgba(59, 130, 246, 0.3)',
+              }}
+            >
+              {updateState === 'checking' ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" />
+                  检查中
+                </>
+              ) : updateState === 'available' ? (
+                <>
+                  <Download size={12} />
+                  立即更新
+                </>
+              ) : (
+                <>
+                  <RefreshCw size={12} />
+                  检查更新
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </SettingGroup>
 
-      <div className="text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
-        Built with ❤️ · MIT License
+      {/* ── 开源信息 ── */}
+      <SettingGroup title="开源信息">
+        <div className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-xl"
+                style={{
+                  background: 'rgba(139, 92, 246, 0.15)',
+                  color: '#8b5cf6',
+                }}
+              >
+                <Info size={18} />
+              </div>
+              <div>
+                <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  开源项目
+                </div>
+                <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Apache License 2.0 · 完全免费
+                </div>
+              </div>
+            </div>
+            <a
+              href="https://github.com/kobewl/LogLens"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                background: 'var(--surface-hover)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border-default)',
+              }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="currentColor"
+              >
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+              </svg>
+              GitHub
+            </a>
+          </div>
+        </div>
+      </SettingGroup>
+
+      {/* ── 底部信息 ── */}
+      <div className="flex items-center justify-between mt-6 px-2">
+        <div className="flex items-center gap-2">
+          <div
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ background: '#10b981' }}
+          />
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            系统运行正常
+          </span>
+        </div>
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          Made with ❤️ by kobewl
+        </span>
       </div>
     </TabLayout>
   )
