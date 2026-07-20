@@ -812,7 +812,8 @@ export default function CloudQueryView() {
               {!!rawResult && (
                 <button
                   onClick={async () => {
-                    await writeText(rawText)
+                    const textToCopy = getMcpText(rawResult) || rawText
+                    await writeText(textToCopy)
                     setCopied(true)
                     setTimeout(() => setCopied(false), 1500)
                     showToast('已复制', 'success')
