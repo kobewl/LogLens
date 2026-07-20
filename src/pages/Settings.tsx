@@ -224,7 +224,7 @@ function AiTab() {
               setAiTestResult(null)
             }}
             className={clsx(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors border',
+              'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border hover:opacity-80 active:scale-95',
               aiTab === p.id
                 ? 'border-blue-500 bg-blue-500/15 text-blue-400'
                 : 'border-transparent hover:border-border'
@@ -385,7 +385,7 @@ function CloudTab() {
               setCloudTab(p.id)
               setCloudForm({ access_key_id: '', access_key_secret: '', region: '', project_id: '' })
             }}
-            className={clsx('px-4 py-2 rounded-lg text-sm font-medium transition-colors border')}
+            className={clsx('px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border hover:opacity-80 active:scale-95')}
             style={cloudTab === p.id ? {
               borderColor: '#3b82f6',
               background: 'rgba(59,130,246,0.12)',
@@ -550,7 +550,7 @@ function AppearanceTab() {
                 <button
                   key={s}
                   onClick={() => setFontSize(s)}
-                  className="px-2 py-0.5 rounded text-xs transition-colors"
+                  className="px-2 py-0.5 rounded text-xs transition-all duration-200 hover:opacity-80 active:scale-95"
                   style={{
                     background: fontSize === s ? 'rgba(37,99,235,0.2)' : 'var(--bg-overlay)',
                     color: fontSize === s ? '#60a5fa' : 'var(--text-muted)',
