@@ -6,8 +6,10 @@ import type { LogEntry } from '../../types/log'
 
 interface LogRowProps {
   entry: LogEntry
+  index: number
   selected?: boolean
   onClick?: () => void
+  zebraStripe?: boolean
 }
 
 const LEVEL_STYLES: Record<string, { badge: string; row: string }> = {
@@ -41,11 +43,12 @@ const LEVEL_STYLES: Record<string, { badge: string; row: string }> = {
   },
 }
 
-export default function LogRow({ entry, selected, onClick }: LogRowProps) {
+export default function LogRow({ entry, index, selected, onClick, zebraStripe }: LogRowProps) {
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const level = entry.level?.toUpperCase() ?? ''
   const levelStyle = LEVEL_STYLES[level]
+  const isEven = index % 2 === 0
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -65,6 +68,7 @@ export default function LogRow({ entry, selected, onClick }: LogRowProps) {
         'group border-b border-border/40 font-mono text-xs',
         levelStyle?.row,
         selected && 'bg-accent/8',
+        zebraStripe && !isEven && !selected && 'bg-surface-hover/30',
       )}
     >
       {/* Main row */}

@@ -1,5 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useRef } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { FileSearch } from 'lucide-react'
 import type { LogEntry } from '../../types/log'
 import LogRow from './LogRow'
@@ -10,8 +10,33 @@ interface LogTableProps {
   onSelectLine?: (line: number) => void
 }
 
+// 从 localStorage 读取斑马纹设置
+function getZebraStripe(): boolean {
+  try {
+    const value = localStorage.getItem('zebra-stripe')
+    return value ? JSON.parse(value) : true
+  } catch {
+    return true
+  }
+}
+
 export default function LogTable({ entries, selectedLine, onSelectLine }: LogTableProps) {
   const parentRef = useRef<HTMLDivElement>(null)
+  const [zebraStripe, setZebraStripe] = useState(getZebraStripe)
+
+  // 监听 localStorage 变化
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setZebraStripe(getZebraStripe())
+    }
+    window.addEventListener('storage', handleStorageChange)
+    // 也监听自定义事件
+    window.addEventListener('zebra-stripe-change', handleStorageChange)
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('zebra-stripe-change', handleStorageChange)
+    }
+  }, [])
 
   const virtualizer = useVirtualizer({
     count: entries.length,
@@ -49,8 +74,10 @@ export default function LogTable({ entries, selectedLine, onSelectLine }: LogTab
             >
               <LogRow
                 entry={entry}
+                index={item.index}
                 selected={selectedLine === entry.line_number}
                 onClick={() => onSelectLine?.(entry.line_number)}
+                zebraStripe={zebraStripe}
               />
             </div>
           )

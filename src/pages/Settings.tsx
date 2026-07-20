@@ -643,7 +643,8 @@ function AppearanceTab() {
             <AppearanceToggle
               label="斑马纹"
               hint="奇偶行交替背景色，提升可读性"
-              defaultChecked={false}
+              defaultChecked={true}
+              storageKey="zebra-stripe"
               icon={
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -847,13 +848,35 @@ function AppearanceToggle({
   hint,
   defaultChecked,
   icon,
+  storageKey,
 }: {
   label: string
   hint: string
   defaultChecked: boolean
   icon: React.ReactNode
+  storageKey?: string
 }) {
-  const [on, setOn] = useState(defaultChecked)
+  const [on, setOn] = useState(() => {
+    if (storageKey) {
+      try {
+        const value = localStorage.getItem(storageKey)
+        return value ? JSON.parse(value) : defaultChecked
+      } catch {
+        return defaultChecked
+      }
+    }
+    return defaultChecked
+  })
+
+  const handleToggle = () => {
+    const newValue = !on
+    setOn(newValue)
+    if (storageKey) {
+      localStorage.setItem(storageKey, JSON.stringify(newValue))
+      // 触发自定义事件通知其他组件
+      window.dispatchEvent(new CustomEvent(`${storageKey}-change`))
+    }
+  }
 
   return (
     <div
@@ -883,7 +906,7 @@ function AppearanceToggle({
         </div>
       </div>
       <button
-        onClick={() => setOn(!on)}
+        onClick={handleToggle}
         className="relative inline-flex h-6 w-11 shrink-0 rounded-full transition-all duration-300"
         style={{
           background: on
