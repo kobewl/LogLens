@@ -93,9 +93,18 @@ select {
   padding-right: 28px !important;
   appearance: none;
   -webkit-appearance: none;
+  -moz-appearance: none;
 }
+
+/* Select arrow — light */
 [data-theme="light"] select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23656d76' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+/* Ensure select works properly in all browsers */
+select:focus {
+  border-color: var(--accent-primary);
+  outline: none;
 }
 
 pre, code, .font-mono { font-feature-settings: "liga" 0, "calt" 0; }
