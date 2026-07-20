@@ -22,6 +22,8 @@
 :root,
 [data-theme="dark"] {
   color-scheme: dark;
+
+  /* 颜色变量 */
   --bg-base: #0d1117;
   --bg-elevated: #161b22;
   --bg-overlay: #1c2128;
@@ -36,11 +38,53 @@
   --accent-warning: #e3b341;
   --accent-success: #3fb950;
   --border-default: #30363d;
+
+  /* 间距变量 */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+
+  /* 组件间距 */
+  --component-gap: 16px;
+  --section-gap: 24px;
+  --group-gap: 32px;
+
+  /* 字体大小 */
+  --font-size-xs: 10px;
+  --font-size-sm: 12px;
+  --font-size-base: var(--app-font-size, 13px);
+  --font-size-lg: 14px;
+  --font-size-xl: 16px;
+  --font-size-2xl: 18px;
+
+  /* 字重 */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* 圆角 */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Light Theme ──────────────────────────────────────────── */
 [data-theme="light"] {
   color-scheme: light;
+
+  /* 颜色变量 */
   --bg-base: #ffffff;
   --bg-elevated: #f6f8fa;
   --bg-overlay: #eaeef2;
@@ -55,6 +99,12 @@
   --accent-warning: #9a6700;
   --accent-success: #1a7f37;
   --border-default: #d0d7de;
+
+  /* 阴影在亮色主题下更深 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.18);
 }
 
 :root {
