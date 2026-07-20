@@ -736,7 +736,7 @@ function AboutTab() {
                 href={downloadUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs flex items-center gap-1 mt-1 hover:underline"
+                className="text-xs flex items-center gap-1 mt-1 hover:underline transition-colors duration-200"
                 style={{ color: '#60a5fa' }}
               >
                 <Download size={12} /> 前往下载
@@ -746,11 +746,10 @@ function AboutTab() {
           <button
             onClick={checkUpdate}
             disabled={updateState === 'checking'}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-all duration-200 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:scale-100"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-all duration-200 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
             style={{
               background: 'var(--surface-hover)',
               color: 'var(--text-secondary)',
-              opacity: updateState === 'checking' ? 0.5 : 1,
             }}
           >
             {updateState === 'checking' ? (
