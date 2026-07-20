@@ -524,77 +524,210 @@ function AppearanceTab() {
   return (
     <TabLayout title="外观" icon={<Palette size={18} />}
       subtitle="个性化界面主题和显示偏好">
+      {/* ── 主题选择 ── */}
       <SettingGroup title="主题">
-        <SettingRow label="颜色主题" hint="支持暗色和亮色两种主题">
-          <div className="flex gap-2">
-            <ThemeCard id="dark" current={theme} label="暗色" onSelect={toggle} />
-            <ThemeCard id="light" current={theme} label="亮色" onSelect={toggle} />
+        <div className="p-4">
+          <div className="flex gap-4">
+            <ThemeCard id="dark" current={theme} label="深邃暗夜" onSelect={toggle} />
+            <ThemeCard id="light" current={theme} label="明亮日光" onSelect={toggle} />
           </div>
-        </SettingRow>
+        </div>
       </SettingGroup>
 
+      {/* ── 字体设置 ── */}
       <SettingGroup title="字体">
-        <SettingRow label="界面字体大小" hint={`当前: ${fontSize}px`}>
-          <div className="flex items-center gap-3 w-56">
-            <input
-              type="range"
-              min={11}
-              max={18}
-              step={1}
-              value={fontSize}
-              onChange={(e) => setFontSize(Number(e.target.value))}
-              className="flex-1 accent-blue-500"
-            />
-            <div className="flex gap-1">
-              {[12, 13, 14, 15, 16].map((s) => (
+        <div className="p-4">
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  界面字体大小
+                </div>
+                <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  调整界面文字大小以适应您的视觉偏好
+                </div>
+              </div>
+              <div
+                className="px-3 py-1.5 rounded-lg text-sm font-medium"
+                style={{
+                  background: 'rgba(59, 130, 246, 0.15)',
+                  color: '#60a5fa',
+                }}
+              >
+                {fontSize}px
+              </div>
+            </div>
+
+            {/* 滑块区域 */}
+            <div
+              className="p-4 rounded-xl"
+              style={{
+                background: 'var(--bg-overlay)',
+                border: '1px solid var(--border-default)',
+              }}
+            >
+              <input
+                type="range"
+                min={11}
+                max={18}
+                step={1}
+                value={fontSize}
+                onChange={(e) => setFontSize(Number(e.target.value))}
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((fontSize - 11) / 7) * 100}%, var(--border-default) ${((fontSize - 11) / 7) * 100}%, var(--border-default) 100%)`,
+                }}
+              />
+              <div className="flex justify-between mt-2">
+                <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>小 (11px)</span>
+                <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>大 (18px)</span>
+              </div>
+            </div>
+
+            {/* 快捷选择按钮 */}
+            <div className="flex gap-2 mt-3">
+              {[
+                { value: 12, label: 'S', title: '小' },
+                { value: 13, label: 'M', title: '中' },
+                { value: 14, label: 'L', title: '大' },
+                { value: 15, label: 'XL', title: '特大' },
+                { value: 16, label: '2XL', title: '超大' },
+              ].map((size) => (
                 <button
-                  key={s}
-                  onClick={() => setFontSize(s)}
-                  className="px-2 py-0.5 rounded text-xs transition-all duration-200"
+                  key={size.value}
+                  onClick={() => setFontSize(size.value)}
+                  className="flex-1 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                   style={{
-                    background: fontSize === s ? 'rgba(37,99,235,0.2)' : 'var(--bg-overlay)',
-                    color: fontSize === s ? '#60a5fa' : 'var(--text-muted)',
-                    border: `1px solid ${fontSize === s ? 'rgba(37,99,235,0.4)' : 'var(--border-default)'}`,
+                    background: fontSize === size.value
+                      ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                      : 'var(--bg-overlay)',
+                    color: fontSize === size.value ? 'white' : 'var(--text-secondary)',
+                    border: `1px solid ${fontSize === size.value ? 'transparent' : 'var(--border-default)'}`,
+                    boxShadow: fontSize === size.value ? '0 4px 12px rgba(59, 130, 246, 0.3)' : 'none',
                   }}
+                  title={size.title}
                 >
-                  {s}
+                  {size.label}
                 </button>
               ))}
             </div>
           </div>
-        </SettingRow>
+        </div>
       </SettingGroup>
 
+      {/* ── 日志显示设置 ── */}
       <SettingGroup title="日志显示">
-        <SettingRow label="日志级别颜色" hint="不同级别使用不同颜色高亮">
-          <Toggle defaultChecked />
-        </SettingRow>
-        <SettingRow label="时间戳显示" hint="在日志行前显示时间戳">
-          <Toggle defaultChecked />
-        </SettingRow>
-        <SettingRow label="斑马纹" hint="奇偶行交替背景色">
-          <Toggle />
-        </SettingRow>
+        <div className="p-4">
+          <div className="space-y-3">
+            <AppearanceToggle
+              label="日志级别颜色"
+              hint="不同级别使用不同颜色高亮显示"
+              defaultChecked={true}
+              icon={
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                </svg>
+              }
+            />
+            <AppearanceToggle
+              label="时间戳显示"
+              hint="在日志行前显示详细时间戳"
+              defaultChecked={true}
+              icon={
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              }
+            />
+            <AppearanceToggle
+              label="斑马纹"
+              hint="奇偶行交替背景色，提升可读性"
+              defaultChecked={false}
+              icon={
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <line x1="3" y1="9" x2="21" y2="9" />
+                  <line x1="3" y1="15" x2="21" y2="15" />
+                </svg>
+              }
+            />
+          </div>
+        </div>
       </SettingGroup>
 
-      {/* Level color preview */}
+      {/* ── 级别颜色预览 ── */}
       <SettingGroup title="级别颜色预览">
-        <div className="flex flex-wrap gap-2 p-4">
-          {[
-            { level: 'ERROR', bg: 'rgba(248,81,73,0.15)', text: '#f85149', border: 'rgba(248,81,73,0.3)' },
-            { level: 'WARN',  bg: 'rgba(210,153,34,0.15)', text: '#d2991f', border: 'rgba(210,153,34,0.3)' },
-            { level: 'INFO',  bg: 'rgba(47,129,247,0.15)', text: '#58a6ff', border: 'rgba(47,129,247,0.3)' },
-            { level: 'DEBUG', bg: 'rgba(56,189,248,0.15)', text: '#7dd3fc', border: 'rgba(56,189,248,0.3)' },
-            { level: 'TRACE', bg: 'rgba(148,163,184,0.12)', text: '#94a3b8', border: 'rgba(148,163,184,0.3)' },
-          ].map(({ level, bg, text, border }) => (
-            <span
-              key={level}
-              className="px-2.5 py-1 rounded-full text-xs font-mono font-semibold border"
-              style={{ background: bg, color: text, borderColor: border }}
-            >
-              {level}
-            </span>
-          ))}
+        <div className="p-4">
+          <div className="grid grid-cols-5 gap-3">
+            {[
+              { level: 'ERROR', bg: 'rgba(248,81,73,0.15)', text: '#f85149', border: 'rgba(248,81,73,0.3)', icon: '✕' },
+              { level: 'WARN',  bg: 'rgba(210,153,34,0.15)', text: '#d2991f', border: 'rgba(210,153,34,0.3)', icon: '⚠' },
+              { level: 'INFO',  bg: 'rgba(47,129,247,0.15)', text: '#58a6ff', border: 'rgba(47,129,247,0.3)', icon: 'ℹ' },
+              { level: 'DEBUG', bg: 'rgba(56,189,248,0.15)', text: '#7dd3fc', border: 'rgba(56,189,248,0.3)', icon: '🔍' },
+              { level: 'TRACE', bg: 'rgba(148,163,184,0.12)', text: '#94a3b8', border: 'rgba(148,163,184,0.3)', icon: '📋' },
+            ].map(({ level, bg, text, border, icon }) => (
+              <div
+                key={level}
+                className="flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200 hover:scale-[1.05]"
+                style={{
+                  background: bg,
+                  border: `1px solid ${border}`,
+                }}
+              >
+                <span className="text-lg">{icon}</span>
+                <span
+                  className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold"
+                  style={{
+                    background: `${text}20`,
+                    color: text,
+                  }}
+                >
+                  {level}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* 示例日志行 */}
+          <div
+            className="mt-4 p-3 rounded-xl font-mono text-xs"
+            style={{
+              background: 'var(--bg-overlay)',
+              border: '1px solid var(--border-default)',
+            }}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <span style={{ color: '#94a3b8' }}>2024-01-15 10:30:45</span>
+              <span
+                className="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                style={{ background: 'rgba(47,129,247,0.15)', color: '#58a6ff' }}
+              >
+                INFO
+              </span>
+              <span style={{ color: 'var(--text-secondary)' }}>Application started successfully</span>
+            </div>
+            <div className="flex items-center gap-2 mb-1">
+              <span style={{ color: '#94a3b8' }}>2024-01-15 10:30:46</span>
+              <span
+                className="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                style={{ background: 'rgba(248,81,73,0.15)', color: '#f85149' }}
+              >
+                ERROR
+              </span>
+              <span style={{ color: '#f85149' }}>Connection failed: timeout</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span style={{ color: '#94a3b8' }}>2024-01-15 10:30:47</span>
+              <span
+                className="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                style={{ background: 'rgba(210,153,34,0.15)', color: '#d2991f' }}
+              >
+                WARN
+              </span>
+              <span style={{ color: '#d2991f' }}>Retrying connection...</span>
+            </div>
+          </div>
         </div>
       </SettingGroup>
     </TabLayout>
@@ -607,41 +740,167 @@ function ThemeCard({
   id: string; current: string; label: string; onSelect: () => void
 }) {
   const isActive = id === current
+  const isDark = id === 'dark'
+
   return (
     <button
       onClick={() => { if (!isActive) onSelect() }}
       className={clsx(
-        'flex flex-col items-center gap-2 rounded-xl p-3 border transition-all duration-200 w-24',
-        isActive ? 'border-blue-500 bg-blue-500/10' : 'border-border hover:border-border/80'
+        'flex-1 flex flex-col items-center gap-3 rounded-xl p-4 border transition-all duration-300',
+        isActive ? 'scale-[1.02]' : 'hover:scale-[1.01]'
       )}
-      style={!isActive ? {
-        borderColor: 'var(--border-default)',
-        background: 'var(--bg-elevated)',
-        boxShadow: 'var(--shadow-sm)'
-      } : {
-        boxShadow: 'var(--shadow-md)'
+      style={{
+        borderColor: isActive ? (isDark ? '#3b82f6' : '#2563eb') : 'var(--border-default)',
+        background: isActive
+          ? isDark
+            ? 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(99,102,241,0.1) 100%)'
+            : 'linear-gradient(135deg, rgba(37,99,235,0.1) 0%, rgba(59,130,246,0.15) 100%)'
+          : 'var(--bg-elevated)',
+        boxShadow: isActive
+          ? isDark
+            ? '0 8px 32px rgba(59, 130, 246, 0.2)'
+            : '0 8px 32px rgba(37, 99, 235, 0.15)'
+          : 'var(--shadow-sm)',
       }}
     >
+      {/* 主题预览 */}
       <div
-        className="w-16 h-10 rounded-lg flex items-center justify-center"
+        className="w-full h-24 rounded-lg overflow-hidden relative"
         style={{
-          background: id === 'dark' ? '#0d1117' : '#ffffff',
-          border: `1px solid ${id === 'dark' ? '#30363d' : '#d0d7de'}`,
+          background: isDark ? '#0d1117' : '#ffffff',
+          border: `1px solid ${isDark ? '#30363d' : '#d0d7de'}`,
         }}
       >
-        <div className="flex flex-col gap-0.5 w-10">
-          <div className="h-1.5 rounded-full" style={{ background: id === 'dark' ? '#58a6ff' : '#0969da', width: '60%' }} />
-          <div className="h-1 rounded-full" style={{ background: id === 'dark' ? '#30363d' : '#d0d7de' }} />
-          <div className="h-1 rounded-full" style={{ background: id === 'dark' ? '#30363d' : '#d0d7de', width: '80%' }} />
+        {/* 模拟界面 */}
+        <div className="absolute inset-0 p-2">
+          {/* 标题栏 */}
+          <div
+            className="h-2 rounded-full mb-1.5"
+            style={{
+              background: isDark ? '#161b22' : '#f6f8fa',
+              width: '40%',
+            }}
+          />
+          {/* 内容行 */}
+          <div className="space-y-1">
+            <div
+              className="h-1.5 rounded-full"
+              style={{
+                background: isDark ? '#21262d' : '#eaeef2',
+                width: '100%',
+              }}
+            />
+            <div
+              className="h-1.5 rounded-full"
+              style={{
+                background: isDark ? '#21262d' : '#eaeef2',
+                width: '80%',
+              }}
+            />
+            <div
+              className="h-1.5 rounded-full"
+              style={{
+                background: isDark ? '#21262d' : '#eaeef2',
+                width: '60%',
+              }}
+            />
+          </div>
+          {/* 强调色条 */}
+          <div
+            className="absolute bottom-2 left-2 right-2 h-1 rounded-full"
+            style={{
+              background: isDark
+                ? 'linear-gradient(90deg, #3b82f6, #6366f1)'
+                : 'linear-gradient(90deg, #2563eb, #4f46e5)',
+            }}
+          />
         </div>
       </div>
-      <span className="text-xs font-medium" style={{ color: isActive ? '#60a5fa' : 'var(--text-secondary)' }}>
-        {label}
-      </span>
-      {isActive && (
-        <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-      )}
+
+      {/* 标签 */}
+      <div className="flex items-center gap-2">
+        <span
+          className="text-sm font-medium"
+          style={{ color: isActive ? (isDark ? '#60a5fa' : '#2563eb') : 'var(--text-secondary)' }}
+        >
+          {label}
+        </span>
+        {isActive && (
+          <div
+            className="w-4 h-4 rounded-full flex items-center justify-center"
+            style={{
+              background: isDark ? '#3b82f6' : '#2563eb',
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="white" strokeWidth="3">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+        )}
+      </div>
     </button>
+  )
+}
+
+function AppearanceToggle({
+  label,
+  hint,
+  defaultChecked,
+  icon,
+}: {
+  label: string
+  hint: string
+  defaultChecked: boolean
+  icon: React.ReactNode
+}) {
+  const [on, setOn] = useState(defaultChecked)
+
+  return (
+    <div
+      className="flex items-center justify-between p-3 rounded-xl transition-all duration-200 hover:scale-[1.01]"
+      style={{
+        background: 'var(--bg-overlay)',
+        border: '1px solid var(--border-default)',
+      }}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-lg"
+          style={{
+            background: on ? 'rgba(59, 130, 246, 0.15)' : 'var(--surface-hover)',
+            color: on ? '#60a5fa' : 'var(--text-muted)',
+          }}
+        >
+          {icon}
+        </div>
+        <div>
+          <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+            {label}
+          </div>
+          <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+            {hint}
+          </div>
+        </div>
+      </div>
+      <button
+        onClick={() => setOn(!on)}
+        className="relative inline-flex h-6 w-11 shrink-0 rounded-full transition-all duration-300"
+        style={{
+          background: on
+            ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+            : 'var(--bg-overlay)',
+          boxShadow: on ? '0 4px 12px rgba(59, 130, 246, 0.3)' : 'none',
+        }}
+      >
+        <span
+          className="absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300"
+          style={{
+            transform: on ? 'translateX(24px)' : 'translateX(4px)',
+            boxShadow: on ? '0 2px 8px rgba(0, 0, 0, 0.2)' : '0 1px 3px rgba(0, 0, 0, 0.1)',
+          }}
+        />
+      </button>
+    </div>
   )
 }
 
