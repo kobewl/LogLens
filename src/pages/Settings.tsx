@@ -6,11 +6,13 @@ import {
   ChevronRight,
   Cloud,
   Database,
+  Download,
   FileJson,
   Info,
   Loader2,
   Monitor,
   Palette,
+  RefreshCw,
   Settings as SettingsIcon,
   XCircle,
 } from 'lucide-react'
@@ -641,6 +643,33 @@ function ThemeCard({
 // About Tab
 // ─────────────────────────────────────────────────────────
 function AboutTab() {
+  const [updateState, setUpdateState] = useState<'idle' | 'checking' | 'available' | 'uptodate' | 'error'>('idle')
+  const [latestVersion, setLatestVersion] = useState('')
+  const [downloadUrl, setDownloadUrl] = useState('')
+  const currentVersion = '0.1.0'
+
+  const checkUpdate = async () => {
+    setUpdateState('checking')
+    try {
+      const res = await fetch('https://api.github.com/repos/kobewl/LogLens/releases/latest')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      const tag = (data.tag_name || '').replace(/^v/, '')
+      const htmlUrl = data.html_url || 'https://github.com/kobewl/LogLens/releases'
+
+      if (tag && tag !== currentVersion) {
+        setLatestVersion(tag)
+        setDownloadUrl(htmlUrl)
+        setUpdateState('available')
+      } else {
+        setUpdateState('uptodate')
+      }
+    } catch (e) {
+      console.error('检查更新失败:', e)
+      setUpdateState('error')
+    }
+  }
+
   return (
     <TabLayout title="关于 LogLens" icon={<Info size={18} />}>
       <div className="flex items-center gap-5 mb-6">
@@ -652,7 +681,7 @@ function AboutTab() {
         </div>
         <div>
           <div className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>LogLens</div>
-          <div className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>版本 0.1.0</div>
+          <div className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>版本 {currentVersion}</div>
           <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
             Tauri 2 · React 19 · Rust
           </div>
@@ -683,6 +712,49 @@ function AboutTab() {
             </div>
           </div>
         ))}
+      </SettingGroup>
+
+      {/* ── 检查更新 ── */}
+      <SettingGroup title="版本更新">
+        <div className="flex items-center justify-between py-2">
+          <div>
+            <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
+              {updateState === 'checking' && '正在检查更新…'}
+              {updateState === 'uptodate' && '✅ 已是最新版本'}
+              {updateState === 'available' && `🆕 发现新版本 v${latestVersion}`}
+              {updateState === 'error' && '检查失败，请稍后重试'}
+              {(updateState === 'idle') && '检查是否有新版本可用'}
+            </div>
+            {updateState === 'available' && (
+              <a
+                href={downloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs flex items-center gap-1 mt-1 hover:underline"
+                style={{ color: '#60a5fa' }}
+              >
+                <Download size={12} /> 前往下载
+              </a>
+            )}
+          </div>
+          <button
+            onClick={checkUpdate}
+            disabled={updateState === 'checking'}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors"
+            style={{
+              background: 'var(--surface-hover)',
+              color: 'var(--text-secondary)',
+              opacity: updateState === 'checking' ? 0.5 : 1,
+            }}
+          >
+            {updateState === 'checking' ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <RefreshCw size={12} />
+            )}
+            检查更新
+          </button>
+        </div>
       </SettingGroup>
 
       <div className="text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
