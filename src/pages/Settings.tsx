@@ -65,14 +65,14 @@ export default function Settings() {
             key={id}
             onClick={() => setTab(id)}
             className={clsx(
-              'flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-left transition-colors group',
+              'flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-left transition-all duration-200 group',
               tab === id ? 'bg-blue-500/15' : 'hover:bg-surface-hover'
             )}
           >
             <Icon
               size={15}
               className={clsx(
-                'shrink-0 transition-colors',
+                'shrink-0 transition-colors duration-200',
                 tab === id ? 'text-blue-400' : 'text-muted group-hover:text-secondary'
               )}
             />
@@ -276,7 +276,7 @@ function AiTab() {
         <button
           onClick={testAi}
           disabled={aiTesting}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm border transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm border transition-all duration-200 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
           style={{
             background: 'var(--bg-elevated)',
             color: 'var(--text-secondary)',
@@ -288,7 +288,7 @@ function AiTab() {
         </button>
         <button
           onClick={saveAi}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
           style={{ background: '#2563eb' }}
         >
           保存配置
@@ -447,7 +447,7 @@ function CloudTab() {
         <button
           onClick={testCloud}
           disabled={cloudTesting}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm border transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm border transition-all duration-200 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
           style={{
             background: 'var(--bg-elevated)',
             color: 'var(--text-secondary)',
@@ -459,7 +459,7 @@ function CloudTab() {
         </button>
         <button
           onClick={saveCloud}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
           style={{ background: '#2563eb' }}
         >
           保存凭据
@@ -740,7 +740,7 @@ function AboutTab() {
           <button
             onClick={checkUpdate}
             disabled={updateState === 'checking'}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-all duration-200 hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:scale-100"
             style={{
               background: 'var(--surface-hover)',
               color: 'var(--text-secondary)',
