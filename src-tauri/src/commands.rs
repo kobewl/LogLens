@@ -526,6 +526,18 @@ pub async fn cloud_search_with_pool(
                     endpoint.split('.').next().unwrap_or("cn-hangzhou").to_string()
                 });
 
+            // 诊断：输出凭据信息（脱敏），帮助定位签名/认证问题
+            eprintln!(
+                "[Aliyun SLS] 🔑 凭据: AK={}*** ({}位), SK={}*** ({}位), region={}, project={}, logstore={}",
+                &ak[..ak.len().min(4)],
+                ak.len(),
+                &sk[..sk.len().min(4)],
+                sk.len(),
+                region_code,
+                sls_project,
+                logstore,
+            );
+
             let query_str = keywords.as_deref().unwrap_or("*").to_string();
             let from_sec = from.parse::<i64>().unwrap_or(now_ms - 3600000) / 1000;
             let to_sec = to.parse::<i64>().unwrap_or(now_ms) / 1000;
@@ -551,13 +563,45 @@ pub async fn cloud_search_with_pool(
             tokio::time::timeout(
                 std::time::Duration::from_secs(60),
                 tokio::task::spawn_blocking(move || {
+                    let t0 = std::time::Instant::now();
                     let env_refs: Vec<(&str, &str)> = env.iter().map(|(k, v)| (&k[..], &v[..])).collect();
-                    let client = crate::cloud::connector::McpClient::spawn("npx", &["-y", "aliyun-sls-mcp"], &env_refs)?;
-                    client.call_tool("query_logs", args)
+
+                    // 阶段1: 启动 npx 子进程
+                    let client = crate::cloud::connector::McpClient::spawn(
+                        "npx", &["-y", "aliyun-sls-mcp"], &env_refs,
+                    )
+                    .map_err(|e| {
+                        eprintln!("[Aliyun SLS] ❌ npx 启动失败 (耗时 {:?}): {}", t0.elapsed(), e);
+                        e
+                    })?;
+                    eprintln!("[Aliyun SLS] ✅ npx 启动成功 (耗时 {:?})", t0.elapsed());
+
+                    // 阶段2: MCP 握手 + 调用 query_logs
+                    let t1 = std::time::Instant::now();
+                    let result = client
+                        .call_tool("query_logs", args)
+                        .map_err(|e| {
+                            eprintln!(
+                                "[Aliyun SLS] ❌ query_logs 失败 (总耗时 {:?}): {}\n子进程 stderr: {}",
+                                t0.elapsed(),
+                                e,
+                                client.stderr_snapshot(),
+                            );
+                            e
+                        })?;
+                    eprintln!(
+                        "[Aliyun SLS] ✅ query_logs 成功 (调用耗时 {:?}, 总耗时 {:?})",
+                        t1.elapsed(),
+                        t0.elapsed(),
+                    );
+                    Ok(result)
                 }),
             )
             .await
-            .map_err(|_| "阿里云查询超时（60秒），SLS API 响应过慢，请稍后重试".to_string())?
+            .map_err(|_| {
+                eprintln!("[Aliyun SLS] ❌ 整体超时（60秒）—— 可能是 npx 下载包太慢，或 aliyun-sls-mcp 子进程无响应");
+                "阿里云查询超时（60秒），SLS API 响应过慢，请稍后重试".to_string()
+            })?
             .map_err(|e| format!("线程错误: {}", e))?
         }
         "tencent" => {
