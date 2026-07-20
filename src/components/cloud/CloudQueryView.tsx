@@ -12,7 +12,7 @@ import {
 import { invoke } from '@tauri-apps/api/core'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { open } from '@tauri-apps/plugin-dialog'
-import { showToast } from '../ui/Toast'
+import { showToast, ToastContainer } from '../ui/Toast'
 import type { CloudProjectSummary, ImportAlias } from '../../types/log'
 
 // ─── 云日志结果解析 ────────────────────────────────────────────────────────────
@@ -579,6 +579,7 @@ export default function CloudQueryView() {
 
   return (
     <div className="flex h-full">
+      <ToastContainer />
       {/* ── 左侧：项目列表 ─────────────────────────────────── */}
       <div className="w-72 shrink-0 border-r border-border bg-elevated flex flex-col">
         <div className="border-b border-border px-4 py-3">
@@ -812,11 +813,16 @@ export default function CloudQueryView() {
               {!!rawResult && (
                 <button
                   onClick={async () => {
-                    const textToCopy = getMcpText(rawResult) || rawText
-                    await writeText(textToCopy)
-                    setCopied(true)
-                    setTimeout(() => setCopied(false), 1500)
-                    showToast('已复制', 'success')
+                    try {
+                      const textToCopy = getMcpText(rawResult) || rawText
+                      await writeText(textToCopy)
+                      setCopied(true)
+                      setTimeout(() => setCopied(false), 1500)
+                      showToast('已复制到剪贴板', 'success')
+                    } catch (e) {
+                      console.error('复制失败:', e)
+                      showToast(`复制失败: ${String(e).slice(0, 80)}`, 'error')
+                    }
                   }}
                   className="flex items-center gap-1 text-xs text-secondary hover:text-primary transition-colors"
                 >
