@@ -176,24 +176,35 @@ function stripHighlightTags(text: string): string {
   return text.replace(/<\/?HighLightTag>/gi, '')
 }
 
-/** 将 <HighLightTag>关键词</HighLightTag> 渲染为带背景色的 React 节点 */
-function renderHighlighted(text: string): React.ReactNode {
-  if (!text.includes('<HighLightTag>') && !text.includes('<highlighttag>')) return text
-  const parts = text.split(/(<HighLightTag>.*?<\/HighLightTag>)/gi)
+/** 统一的关键词高亮：先去掉云厂商自带标记，再按搜索词高亮 */
+function highlightText(text: string, query: string): React.ReactNode {
+  // 1. 先去除云厂商自带的 <HighLightTag> 标记
+  const clean = stripHighlightTags(text)
+
+  // 2. 如果没有搜索词或是通配符，直接返回原文
+  if (!query || !query.trim() || query === '*') return clean
+
+  // 3. 按搜索词切分高亮（不区分大小写）
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(${escaped})`, 'gi')
+  const parts = clean.split(regex)
+
+  if (parts.length <= 1) return clean
+
   return (
     <>
-      {parts.map((part, i) => {
-        const m = part.match(/^<HighLightTag>(.*?)<\/HighLightTag>$/i)
-        if (m) return (
-          <mark key={i} className="rounded px-0.5 bg-yellow-400/25 text-yellow-300 not-italic">
-            {m[1]}
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.toLowerCase() ? (
+          <mark key={i} className="text-yellow-400 not-italic bg-transparent">
+            {part}
           </mark>
+        ) : (
+          <span key={i}>{part}</span>
         )
-        return <span key={i}>{part}</span>
-      })}
+      )}
     </>
   )
-	}
+}
 
 	/** 从日志记录里推断 timestamp */
 function inferTime(record: LogRecord): string {
@@ -252,7 +263,7 @@ function ProviderBadge({ provider }: { provider: string }) {
 
 // ─── 结果行 ───────────────────────────────────────────────────────────────────
 
-function ResultRow({ record, index }: { record: LogRecord; index: number }) {
+function ResultRow({ record, index, query }: { record: LogRecord; index: number; query: string }) {
   const [expanded, setExpanded] = useState(false)
   const level = inferLevel(record)
   // 纯文本（用于级别检测等），带高亮原始值（用于渲染）
@@ -286,7 +297,7 @@ function ResultRow({ record, index }: { record: LogRecord; index: number }) {
           {level ? <LevelBadge level={level} /> : <span className="text-muted">—</span>}
         </span>
         <span className="flex-1 truncate text-primary">
-          {rawMsg ? renderHighlighted(rawMsg) : JSON.stringify(record)}
+          {rawMsg ? highlightText(rawMsg, query) : JSON.stringify(record)}
         </span>
       </div>
       {expanded && (
@@ -296,7 +307,7 @@ function ResultRow({ record, index }: { record: LogRecord; index: number }) {
             <div className="flex gap-2 py-1 border-b border-border/50 mb-1">
               <span className="w-36 shrink-0 text-muted font-sans">message</span>
               <span className="flex-1 text-primary break-all whitespace-pre-wrap">
-                {renderHighlighted(rawMsg)}
+                {highlightText(rawMsg, query)}
               </span>
             </div>
           )}
@@ -862,7 +873,7 @@ export default function CloudQueryView() {
                     <span className="flex-1">消息</span>
                   </div>
                   {records.map((rec, i) => (
-                    <ResultRow key={i} record={rec} index={i} />
+                    <ResultRow key={i} record={rec} index={i} query={queryStr} />
                   ))}
                 </div>
               ) : (() => {
