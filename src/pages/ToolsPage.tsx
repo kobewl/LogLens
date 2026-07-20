@@ -13,7 +13,7 @@ import clsx from 'clsx'
 
 type ToolId = 'json' | 'timestamp' | 'regex' | 'base64' | 'url'
 
-const TOOLS: Array<{ id: ToolId; icon: React.ComponentType<{ size: number }>; label: string; desc: string }> = [
+const TOOLS: Array<{ id: ToolId; icon: React.ComponentType<{ size?: number; className?: string }>; label: string; desc: string }> = [
   { id: 'json', icon: Code2, label: 'JSON 格式化', desc: '格式化、压缩、校验 JSON' },
   { id: 'timestamp', icon: Clock, label: '时间戳转换', desc: 'Unix 时间戳 ↔ 可读时间' },
   { id: 'regex', icon: Regex, label: '正则测试', desc: '实时匹配测试、分组提取' },

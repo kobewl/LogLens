@@ -193,18 +193,9 @@ function renderHighlighted(text: string): React.ReactNode {
       })}
     </>
   )
-}
+	}
 
-/** 从日志记录里推断 message（返回纯文本，已去掉高亮标签） */
-function inferMessage(record: LogRecord): string {
-  const msg = String(
-    record['message'] ?? record['msg'] ?? record['content'] ?? record['log_content'] ??
-    record['__content__'] ?? record['Message'] ?? record['rawLog'] ?? '',
-  )
-  return stripHighlightTags(msg)
-}
-
-/** 从日志记录里推断 timestamp */
+	/** 从日志记录里推断 timestamp */
 function inferTime(record: LogRecord): string {
   const raw = record['time'] ?? record['log_time_ns'] ?? record['__time__'] ?? record['timestamp'] ?? record['Time'] ?? ''
   if (!raw) return ''
@@ -353,9 +344,7 @@ export default function CloudQueryView() {
   const [copied, setCopied] = useState(false)
 
   // 华为云 project_id 手动输入
-  const [projectCreds, setProjectCreds] = useState<Record<string, unknown> | null>(null)
-  const [projectIdInput, setProjectIdInput] = useState('')
-  const [savingProjectId, setSavingProjectId] = useState(false)
+  const [_projectCreds, setProjectCreds] = useState<Record<string, unknown> | null>(null)
 
   // 编辑项目凭据弹窗
   const [editingProject, setEditingProject] = useState<string | null>(null)
@@ -393,7 +382,6 @@ export default function CloudQueryView() {
     setRecords([])
     setRawResult(null)
     setProjectCreds(null)
-    setProjectIdInput('')
     try {
       const aliases = await invoke<ImportAlias[]>('get_project_aliases', { projectName: name })
       setProjectAliases(aliases)
@@ -403,22 +391,6 @@ export default function CloudQueryView() {
       setProjectCreds(creds)
     } catch (e) {
       showToast(String(e), 'error')
-    }
-  }
-
-  // 保存华为云 project_id
-  const handleSaveProjectId = async () => {
-    if (!selectedProject || !projectIdInput.trim()) return
-    setSavingProjectId(true)
-    try {
-      await invoke('save_project_id', { projectName: selectedProject, projectId: projectIdInput.trim() })
-      // 更新本地状态，隐藏输入框
-      setProjectCreds((prev) => ({ ...prev, project_id: projectIdInput.trim() }))
-      showToast('Project ID 已保存', 'success')
-    } catch (e) {
-      showToast(String(e), 'error')
-    } finally {
-      setSavingProjectId(false)
     }
   }
 

@@ -27,8 +27,8 @@ export default function Welcome() {
   const onDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault()
     setDragOver(false)
-    const file = e.dataTransfer.files[0]
-    if (file) await handleOpen(file.path)
+    const file = e.dataTransfer.files[0] as File & { path?: string }
+    if (file) await handleOpen(file.path || '')
     else await handleOpen()
   }, [handleOpen])
 
@@ -197,7 +197,7 @@ export default function Welcome() {
                 <button
                   key={s.id}
                   onClick={async () => {
-                    await selectSession(s.id)
+                    await selectSession(s)
                     navigate('/workspace')
                   }}
                   className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors group"

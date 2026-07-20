@@ -14,9 +14,7 @@ import {
   Wrench,
   Zap,
   BookOpen,
-  ChevronDown,
   ChevronRight,
-  AlertCircle,
   XCircle,
   X,
   FileJson,
@@ -565,7 +563,6 @@ function McpToolsPanel() {
 }
 
 function McpDocsPanel() {
-  const exePath = '~/.local/share/loglens/loglens  # 实际路径见「一键接入」Tab'
   const cursorJson = JSON.stringify({
     mcpServers: {
       loglens: {
