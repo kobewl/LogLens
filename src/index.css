@@ -102,9 +102,12 @@ select {
 }
 
 /* Ensure select works properly in all browsers */
-select:focus {
+select:focus:not(:focus-visible) {
   border-color: var(--accent-primary);
   outline: none;
+}
+select:focus-visible {
+  border-color: var(--accent-primary);
 }
 
 pre, code, .font-mono { font-feature-settings: "liga" 0, "calt" 0; }
