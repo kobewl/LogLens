@@ -806,7 +806,11 @@ function SettingGroup({ title, children }: { title: string; children: React.Reac
       </div>
       <div
         className="rounded-xl border overflow-hidden"
-        style={{ borderColor: 'var(--border-default)', background: 'var(--bg-elevated)' }}
+        style={{
+          borderColor: 'var(--border-default)',
+          background: 'var(--bg-elevated)',
+          boxShadow: 'var(--shadow-sm)'
+        }}
       >
         {children}
       </div>
@@ -861,11 +865,11 @@ function Toggle({ defaultChecked = false }: { defaultChecked?: boolean }) {
   return (
     <button
       onClick={() => setOn(!on)}
-      className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors"
+      className="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200"
       style={{ background: on ? '#2563eb' : 'var(--bg-overlay)' }}
     >
       <span
-        className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform"
+        className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200"
         style={{ transform: on ? 'translateX(16px)' : 'translateX(2px)' }}
       />
     </button>
