@@ -184,7 +184,7 @@ jobs:
   release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: [build-macos-aarch64, build-macos-x86_64, build-windows]
+    needs: [build-macos-aarch64, build-windows]
     if: always() && !cancelled()
     steps:
       - uses: actions/checkout@v4
