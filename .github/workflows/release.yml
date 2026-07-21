@@ -133,19 +133,8 @@ jobs:
             echo "tag=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Delete existing release if any
-        run: |
-          gh release delete "${{ steps.ver.outputs.tag }}" --yes 2>/dev/null || true
-          git push origin --delete "${{ steps.ver.outputs.tag }}" 2>/dev/null || true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Recreate tag
-        run: |
-          git tag -d "${{ steps.ver.outputs.tag }}" 2>/dev/null || true
-          git tag "${{ steps.ver.outputs.tag }}"
-          git push origin "${{ steps.ver.outputs.tag }}" --force
+      - name: Delete existing release
+        run: gh release delete "${{ steps.ver.outputs.tag }}" --yes --cleanup-tag 2>/dev/null || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
