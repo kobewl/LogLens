@@ -1,7 +1,16 @@
 use crate::index::IndexManager;
 use crate::mcp::protocol::*;
 use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use std::path::PathBuf;
+use std::sync::Mutex;
+
+// ── 文件位置追踪（用于 tail_log_file）────────────────────────────────────────────
+
+/// 跟踪每个文件最后读取到的字节位置
+static FILE_POSITIONS: once_cell::sync::Lazy<Mutex<HashMap<String, u64>>> =
+    once_cell::sync::Lazy::new(|| Mutex::new(HashMap::new()));
 
 // ── 工具列表 ──────────────────────────────────────────────────────────────────
 
@@ -44,6 +53,84 @@ pub fn list_tools() -> Vec<Tool> {
                     }
                 },
                 "required": ["file_path"]
+            }),
+        },
+        Tool {
+            name: "tail_log_file".to_string(),
+            description: Some(
+                "📡 Get NEW log lines appended since the last call — like 'tail -f' for AI agents.\n\
+                \n\
+                HOW TO USE: Call this repeatedly to poll for new log entries. Each call returns only\n\
+                lines that were added since your last call. Use this when:\n\
+                  - Watching a running application's output in real-time\n\
+                  - Monitoring a log file while tests are running\n\
+                  - Checking what happened after a specific event\n\
+                \n\
+                FIRST CALL: Returns the last N lines of the file (like 'tail -n').\n\
+                SUBSEQUENT CALLS: Returns only newly appended lines since last check.\n\
+                \n\
+                TIP: Call this BEFORE asking the user to run a test, then call again AFTER to see new logs.\n\
+                TIP: To reset the position tracker for a file, call with reset=true.\n\
+                \n\
+                RETURNS: { file_path, lines: [raw strings], new_lines_count, position, is_first_call }".to_string(),
+            ),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Absolute path to the log file to watch."
+                    },
+                    "max_lines": {
+                        "type": "integer",
+                        "description": "Max lines to return per call (default: 50, max: 200).",
+                        "default": 50
+                    },
+                    "reset": {
+                        "type": "boolean",
+                        "description": "Set to true to reset tracking and re-read from end of file.",
+                        "default": false
+                    }
+                },
+                "required": ["file_path"]
+            }),
+        },
+        Tool {
+            name: "search_all_logs".to_string(),
+            description: Some(
+                "🔎 Search across ALL known log files at once. Most efficient way to find errors\n\
+                when you don't know which specific file contains the issue.\n\
+                \n\
+                Calls list_log_sessions internally to discover files, then searches each one\n\
+                with the given query. Results are grouped by file.\n\
+                \n\
+                USE THIS when:\n\
+                  - You don't know which log file has the error\n\
+                  - Debugging a microservice with multiple log outputs\n\
+                  - Getting a system-wide view of errors\n\
+                \n\
+                RETURNS: { total_matches, files: [{file_path, matches: N, entries: [...]}] }".to_string(),
+            ),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query applied to all files. Examples: \"ERROR\", \"timeout\", \"panic\".",
+                        "default": "ERROR"
+                    },
+                    "limit_per_file": {
+                        "type": "integer",
+                        "description": "Max results per file (default: 20, max: 100).",
+                        "default": 20
+                    },
+                    "max_files": {
+                        "type": "integer",
+                        "description": "Max number of files to search (default: 10).",
+                        "default": 10
+                    }
+                },
+                "required": []
             }),
         },
         Tool {
@@ -232,6 +319,23 @@ async fn call_tool_inner(
                 .map(|r| tool_json_result(&r))
                 .map_err(|e| tool_error(&e))
         }
+        "tail_log_file" => {
+            let file_path = get_str(args, "file_path")?;
+            let max_lines = args.get("max_lines").and_then(|v| v.as_u64()).unwrap_or(50).min(200);
+            let reset     = args.get("reset").and_then(|v| v.as_bool()).unwrap_or(false);
+
+            tail_log_file_impl(&file_path, max_lines, reset)
+                .map(|r| tool_json_result(&r))
+                .map_err(|e| tool_error(&e))
+        }
+        "search_all_logs" => {
+            let query          = args.get("query").and_then(|v| v.as_str()).unwrap_or("ERROR");
+            let limit_per_file = args.get("limit_per_file").and_then(|v| v.as_u64()).unwrap_or(20).min(100);
+            let max_files      = args.get("max_files").and_then(|v| v.as_u64()).unwrap_or(10).min(20);
+
+            let result = search_all_logs_impl(query, limit_per_file, max_files, index_mgr).await;
+            Ok(tool_json_result(&result))
+        }
         "get_log_context" => {
             let file_path   = get_str(args, "file_path")?;
             let line_number = args.get("line_number").and_then(|v| v.as_u64()).unwrap_or(0);
@@ -298,7 +402,7 @@ async fn call_tool_inner(
         _ => Err(JsonRpcError {
             code: -32601,
             message: format!(
-                "Tool '{}' not found. Available tools: search_local_logs, get_log_context, list_log_sessions, get_log_stats, list_cloud_projects, search_cloud_logs.",
+                "Tool '{}' not found. Available: search_local_logs, tail_log_file, search_all_logs, get_log_context, list_log_sessions, get_log_stats, list_cloud_projects, search_cloud_logs.",
                 name
             ),
             data: None,
@@ -613,6 +717,150 @@ fn get_log_stats_impl(file_path: &str) -> Result<Value, String> {
     }
 }
 
+// ── 实时追踪 (tail) ────────────────────────────────────────────────────────────
+
+/// 实时追踪日志文件 — 返回自上次调用以来新增的行
+fn tail_log_file_impl(file_path: &str, max_lines: u64, reset: bool) -> Result<Value, String> {
+    let path_buf = PathBuf::from(file_path);
+    if !path_buf.exists() {
+        return Err(format!("文件不存在: {}", file_path));
+    }
+
+    let mut positions = FILE_POSITIONS.lock().map_err(|e| e.to_string())?;
+
+    if reset {
+        positions.remove(file_path);
+    }
+
+    let file_size = std::fs::metadata(&path_buf)
+        .map_err(|e| format!("无法读取文件元数据: {}", e))?
+        .len();
+
+    let last_pos = positions.get(file_path).copied().unwrap_or(0);
+    let is_first_call = last_pos == 0;
+
+    let mut file = std::fs::File::open(&path_buf).map_err(|e| format!("无法打开文件: {}", e))?;
+
+    if is_first_call && file_size > 0 {
+        // 首次调用：返回文件末尾的 N 行
+        let tail_start = if file_size > 100_000 {
+            file.seek(SeekFrom::End(-(100_000_i64))).unwrap_or(0);
+            file.stream_position().map_err(|e| e.to_string())?
+        } else {
+            0
+        };
+
+        file.seek(SeekFrom::Start(tail_start)).map_err(|e| e.to_string())?;
+        if tail_start > 0 {
+            // 跳过第一行（可能是不完整的）
+            let mut buf = String::new();
+            BufReader::new(&mut file).read_line(&mut buf).ok();
+        }
+    } else if last_pos > file_size {
+        // 文件被截断了，从头开始
+        file.seek(SeekFrom::Start(0)).map_err(|e| e.to_string())?;
+        positions.insert(file_path.to_string(), 0);
+    } else {
+        // 从上次位置继续读
+        file.seek(SeekFrom::Start(last_pos)).map_err(|e| e.to_string())?;
+    }
+
+    let reader = BufReader::new(file);
+    let mut lines: Vec<String> = Vec::new();
+    let mut bytes_read: u64 = last_pos;
+
+    for line in reader.lines() {
+        let line = line.map_err(|e| format!("读取行失败: {}", e))?;
+        bytes_read += line.len() as u64 + 1;
+        lines.push(line);
+        if lines.len() >= max_lines as usize {
+            break;
+        }
+    }
+
+    // 更新位置
+    let new_pos = std::fs::metadata(&path_buf)
+        .map(|m| m.len())
+        .unwrap_or(bytes_read);
+    positions.insert(file_path.to_string(), new_pos);
+
+    Ok(json!({
+        "file_path": file_path,
+        "lines": lines,
+        "new_lines_count": lines.len(),
+        "is_first_call": is_first_call,
+        "file_size_bytes": file_size,
+        "position": new_pos,
+        "hint": if is_first_call && lines.is_empty() {
+            Some("文件为空或刚被创建。继续调用此工具来检测新增内容。".to_string())
+        } else if lines.is_empty() {
+            Some("自上次检查以来没有新增内容。稍后再调用试试。".to_string())
+        } else if lines.len() >= max_lines as usize {
+            Some(format!("已返回最大 {} 行，可能还有更多。再次调用来获取后续行。", max_lines))
+        } else {
+            None
+        }
+    }))
+}
+
+// ── 跨文件搜索 ─────────────────────────────────────────────────────────────────
+
+/// 跨所有已知日志文件搜索
+async fn search_all_logs_impl(
+    query: &str,
+    limit_per_file: u64,
+    max_files: u64,
+    index_mgr: &IndexManager,
+) -> Value {
+    let sessions = list_log_sessions_impl().await;
+
+    if sessions.is_empty() {
+        return json!({
+            "total_matches": 0,
+            "files_searched": 0,
+            "files": [],
+            "hint": "没有已知的日志文件。请在 LogLens GUI 中打开一些日志文件，或使用 search_local_logs 直接指定文件路径。"
+        });
+    }
+
+    let mut results = Vec::new();
+    let mut total_matches = 0u64;
+
+    for session in sessions.iter().take(max_files as usize) {
+        let file_path = session["path"].as_str().unwrap_or("");
+        let file_name = PathBuf::from(file_path)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| file_path.to_string());
+
+        match search_local_logs_impl(file_path, query, limit_per_file, index_mgr) {
+            Ok(search_result) => {
+                let entries = search_result["entries"].as_array()
+                    .map(|a| a.len() as u64)
+                    .unwrap_or(0);
+                if entries > 0 {
+                    total_matches += entries;
+                    results.push(json!({
+                        "file_path": file_path,
+                        "file_name": file_name,
+                        "matches": entries,
+                        "entries": search_result["entries"],
+                    }));
+                }
+            }
+            Err(_) => { /* 跳过无法搜索的文件 */ }
+        }
+    }
+
+    json!({
+        "query": query,
+        "total_matches": total_matches,
+        "files_searched": sessions.len().min(max_files as usize),
+        "files_with_matches": results.len(),
+        "files": results,
+    })
+}
+
 // ── Resources ─────────────────────────────────────────────────────────────────
 
 pub fn list_resources() -> Vec<Resource> {
@@ -636,6 +884,8 @@ pub fn read_resource(uri: &str) -> Result<Value, JsonRpcError> {
                     "status": "running",
                     "tools": [
                         "search_local_logs",
+                        "tail_log_file",
+                        "search_all_logs",
                         "get_log_context",
                         "list_log_sessions",
                         "get_log_stats",

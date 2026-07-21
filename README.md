@@ -7,8 +7,8 @@
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-blue" alt="Platform" />
   <img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="License" />
-  <img src="https://img.shields.io/badge/version-0.3.0-purple" alt="Version" />
-  <img src="https://img.shields.io/badge/MCP-6%20tools-orange" alt="MCP Tools" />
+  <img src="https://img.shields.io/badge/version-0.4.0-purple" alt="Version" />
+  <img src="https://img.shields.io/badge/MCP-8%20tools-orange" alt="MCP Tools" />
 </p>
 
 ---
@@ -52,6 +52,8 @@
 
 ### MCP 服务器（给 AI Agent 用）
 - 🔍 **search_local_logs** — AI 直接搜索你的本地日志文件
+- 📡 **tail_log_file** — 实时追踪日志新增内容（类似 tail -f）
+- 🔎 **search_all_logs** — 跨所有已知日志文件搜索
 - 📋 **get_log_context** — 获取某行日志前后的上下文
 - 📂 **list_log_sessions** — 列出你最近打开的日志文件
 - 📊 **get_log_stats** — 获取日志统计概览（级别分布、时间线）
@@ -185,8 +187,8 @@ LogLens/
 | **Phase 1** | 文件加载 + 格式自动识别 + 虚拟表格 + 基础搜索 | ✅ 完成 |
 | **Phase 2** | tantivy 全文索引 + 高级过滤 + 统计面板 + 云日志 | ✅ 完成 |
 | **Phase 3** | AI 异常检测 + 自然语言查询 + MCP Server | ✅ 完成 |
-| **Phase 4** | **MCP 本地日志工具**（让 AI Agent 直接查本地日志） | ✅ 完成 |
-| **Phase 5** | 多文件关联 + 实时追踪 + 告警规则 | 📋 计划中 |
+| **Phase 4** | **MCP 本地日志工具**（让 AI Agent 直接查本地日志）+ 实时追踪 | ✅ 完成 |
+| **Phase 5** | 多文件关联 + 告警规则 + 插件系统 | 📋 计划中 |
 | **Phase 6** | 插件系统 + 日志 Diff + 报告生成 | 📋 计划中 |
 
 ---
