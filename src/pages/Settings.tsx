@@ -942,7 +942,17 @@ function AboutTab() {
     getVersion().then(setCurrentVersion).catch(() => setCurrentVersion('0.0.0'))
   }, [])
 
+  // 版本加载完成后自动检查更新
+  useEffect(() => {
+    if (currentVersion !== '0.0.0') {
+      checkUpdate()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentVersion])
+
   const checkUpdate = async () => {
+    // 版本尚未加载时不检查，避免误报
+    if (currentVersion === '0.0.0') return
     setUpdateState('checking')
     try {
       const res = await fetch('https://api.github.com/repos/kobewl/LogLens/releases/latest')
