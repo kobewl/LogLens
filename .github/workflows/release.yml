@@ -7,13 +7,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag (e.g. v0.5.0)'
+        description: 'Version (e.g. 0.5.0)'
         required: true
 
 jobs:
-  # ─── macOS ARM (Apple Silicon M1/M2/M3) ──────────────────────────────────────
-  build-macos-aarch64:
-    name: macOS ARM (Apple Silicon)
+  # ─── macOS Universal (ARM + Intel 交叉编译) ──────────────────────────────────
+  build-macos:
+    name: macOS (ARM + Intel)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,97 +29,34 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
-      - name: Setup Rust
+      - name: Setup Rust with cross-compilation targets
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Install frontend deps
         run: pnpm install
 
       - name: Build Tauri (macOS ARM)
         run: pnpm tauri build --target aarch64-apple-darwin
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        continue-on-error: true
-
-      - name: Find build artifacts
-        id: find
-        run: |
-          echo "dmg=$(ls src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg 2>/dev/null | head -1 || echo '')" >> $GITHUB_OUTPUT
-          echo "latest_json=$(ls src-tauri/target/aarch64-apple-darwin/release/bundle/macos/latest.json 2>/dev/null | head -1 || echo '')" >> $GITHUB_OUTPUT
-
-      - name: Upload DMG
-        if: steps.find.outputs.dmg != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-aarch64
-          path: ${{ steps.find.outputs.dmg }}
-
-      - name: Upload latest.json
-        if: steps.find.outputs.latest_json != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: latest-json-aarch64
-          path: ${{ steps.find.outputs.latest_json }}
-
-  # ─── macOS Intel (x86_64) ────────────────────────────────────────────────────
-  build-macos-x86_64:
-    name: macOS Intel (x86_64)
-    runs-on: macos-13
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: '10'
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-apple-darwin
-
-      - name: Install frontend deps
-        run: pnpm install
 
       - name: Build Tauri (macOS Intel)
         run: pnpm tauri build --target x86_64-apple-darwin
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        continue-on-error: true
 
-      - name: Find build artifacts
-        id: find
+      - name: Collect macOS artifacts
         run: |
-          echo "dmg=$(ls src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg 2>/dev/null | head -1 || echo '')" >> $GITHUB_OUTPUT
-          echo "latest_json=$(ls src-tauri/target/x86_64-apple-darwin/release/bundle/macos/latest.json 2>/dev/null | head -1 || echo '')" >> $GITHUB_OUTPUT
+          mkdir -p release-artifacts
+          # ARM DMG
+          cp src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*_aarch64.dmg release-artifacts/ 2>/dev/null || true
+          # Intel DMG
+          cp src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*_x64.dmg release-artifacts/ 2>/dev/null || true
+          ls -la release-artifacts/
 
-      - name: Upload DMG
-        if: steps.find.outputs.dmg != ''
+      - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: macos-x86_64
-          path: ${{ steps.find.outputs.dmg }}
-
-      - name: Upload latest.json
-        if: steps.find.outputs.latest_json != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: latest-json-x86_64
-          path: ${{ steps.find.outputs.latest_json }}
+          name: macos
+          path: release-artifacts/*.dmg
 
   # ─── Windows (x86_64) ────────────────────────────────────────────────────────
   build-windows:
@@ -149,101 +86,92 @@ jobs:
 
       - name: Build Tauri (Windows)
         run: pnpm tauri build --target x86_64-pc-windows-msvc
-        continue-on-error: true
 
-      - name: Find build artifacts
-        id: find
+      - name: Collect Windows artifacts
         shell: bash
         run: |
-          echo "msi=$(ls src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi 2>/dev/null | head -1 || echo '')" >> $GITHUB_OUTPUT
-          echo "exe=$(ls src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe 2>/dev/null | head -1 || echo '')" >> $GITHUB_OUTPUT
-          echo "latest_json=$(ls src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/latest.json 2>/dev/null | head -1 || echo '')" >> $GITHUB_OUTPUT
+          mkdir -p release-artifacts
+          cp src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi release-artifacts/ 2>/dev/null || true
+          cp src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe release-artifacts/ 2>/dev/null || true
+          ls -la release-artifacts/
 
-      - name: Upload MSI
-        if: steps.find.outputs.msi != ''
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-x86_64-msi
-          path: ${{ steps.find.outputs.msi }}
+          name: windows
+          path: release-artifacts/
 
-      - name: Upload EXE
-        if: steps.find.outputs.exe != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-x86_64-exe
-          path: ${{ steps.find.outputs.exe }}
-
-      - name: Upload latest.json
-        if: steps.find.outputs.latest_json != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: latest-json-windows
-          path: ${{ steps.find.outputs.latest_json }}
-
-  # ─── Create Release & Upload Artifacts ───────────────────────────────────────
+  # ─── Create Release ──────────────────────────────────────────────────────────
   release:
-    name: Create Release
+    name: Publish Release
     runs-on: ubuntu-latest
-    needs: [build-macos-aarch64, build-windows]
-    if: always() && !cancelled()
+    needs: [build-macos, build-windows]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all artifacts
+      - name: Download macOS artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          name: macos
+          path: assets/
 
-      - name: Display structure
-        run: ls -R artifacts/
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows
+          path: assets/
 
-      - name: Prepare release assets
-        run: |
-          mkdir -p release-assets
-          # Copy all dmg/msi/exe files to release-assets
-          find artifacts -name "*.dmg" -exec cp {} release-assets/ \;
-          find artifacts -name "*.msi" -exec cp {} release-assets/ \;
-          find artifacts -name "*.exe" -exec cp {} release-assets/ \;
-          ls -la release-assets/
+      - name: List assets
+        run: ls -la assets/
 
-      - name: Get version from tag
-        id: version
+      - name: Get version
+        id: ver
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           else
-            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            echo "tag=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Generate release notes
-        id: notes
+      - name: Delete existing release if any
         run: |
-          echo '## 下载' > release-notes.md
-          echo '' >> release-notes.md
-          echo '| 平台 | 架构 | 文件 |' >> release-notes.md
-          echo '|------|------|------|' >> release-notes.md
-          for f in release-assets/*; do
-            name=$(basename "$f")
-            size=$(du -h "$f" | cut -f1)
-            if [[ "$name" == *"aarch64"* ]] || [[ "$name" == *"arm"* ]]; then
-              echo "| macOS | ARM (M1/M2/M3) | $name ($size) |" >> release-notes.md
-            elif [[ "$name" == *"x64"* ]] || [[ "$name" == *"x86_64"* ]] && [[ "$name" == *".dmg"* ]]; then
-              echo "| macOS | Intel | $name ($size) |" >> release-notes.md
-            elif [[ "$name" == *".msi"* ]]; then
-              echo "| Windows | x86_64 | $name ($size) |" >> release-notes.md
-            elif [[ "$name" == *".exe"* ]]; then
-              echo "| Windows | x86_64 | $name ($size) |" >> release-notes.md
-            fi
-          done
-          cat release-notes.md
+          gh release delete "${{ steps.ver.outputs.tag }}" --yes 2>/dev/null || true
+          git push origin --delete "${{ steps.ver.outputs.tag }}" 2>/dev/null || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Recreate tag
+        run: |
+          git tag -d "${{ steps.ver.outputs.tag }}" 2>/dev/null || true
+          git tag "${{ steps.ver.outputs.tag }}"
+          git push origin "${{ steps.ver.outputs.tag }}" --force
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.tag }}
-          body_path: release-notes.md
-          files: release-assets/*
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: ${{ steps.ver.outputs.tag }}
+          body: |
+            ## 📦 下载
+
+            | 平台 | 架构 | 安装 |
+            |------|------|------|
+            | 🍎 macOS | ARM (M1/M2/M3) | 下载 `.dmg`，拖入 Applications |
+            | 🍎 macOS | Intel | 下载 `.dmg`，拖入 Applications |
+            | 🪟 Windows | x86_64 | 下载 `.msi` 或 `.exe` 安装 |
+
+            ### ✨ 新功能
+            - MCP 服务器 GUI 启动时自动运行在 localhost:19527
+            - 跨平台支持（macOS ARM + Intel + Windows）
+            - 版本更新系统（自动检查 + Release Notes 弹窗）
+
+            ### 📦 MCP 工具（8个）
+            search_local_logs / tail_log_file / search_all_logs / get_log_context
+            list_log_sessions / get_log_stats / list_cloud_projects / search_cloud_logs
+          files: assets/*
           draft: false
           prerelease: false
         env:
