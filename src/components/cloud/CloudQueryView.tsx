@@ -4,7 +4,7 @@
  *
  * Bug Fix: quickSearch 竞态 — 直接把 kw 传给 handleSearch，不依赖 React 异步 state
  */
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Cloud, Loader2, Upload, Copy, RefreshCw, Search,
   AlertCircle, Info, ChevronDown, ChevronRight, CheckCircle2, Pencil, X, Plus, Trash2,
@@ -14,6 +14,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { open } from '@tauri-apps/plugin-dialog'
 import { showToast, ToastContainer } from '../ui/Toast'
 import type { CloudProjectSummary, ImportAlias } from '../../types/log'
+import { useLogLibraryCache } from '../../hooks/useLogLibraryCache'
 
 // ─── 云日志结果解析 ────────────────────────────────────────────────────────────
 
@@ -378,6 +379,19 @@ export default function CloudQueryView() {
   // 删除确认
   const [deletingProject, setDeletingProject] = useState<string | null>(null)
 
+  // ─── 日志库状态缓存 — 实现状态隔离 ──────────────────────────────────────
+  const libCache = useLogLibraryCache()
+  /** 当前日志库的唯一标识，用于缓存读写 */
+  const cacheKey = selectedProject && selectedAlias
+    ? libCache.makeKey(selectedProject, selectedAlias)
+    : null
+  /** 用于防止旧查询结果覆盖新日志库状态 */
+  const cacheKeyRef = useRef<string | null>(null)
+  // 同步 ref，确保 handleSearch 中的竞态检查始终获取最新值
+  useEffect(() => {
+    cacheKeyRef.current = cacheKey
+  }, [cacheKey])
+
   const loadProjects = useCallback(async () => {
     try {
       const list = await invoke<CloudProjectSummary[]>('list_imported_projects')
@@ -388,15 +402,31 @@ export default function CloudQueryView() {
   useEffect(() => { loadProjects() }, [loadProjects])
 
   const handleProjectSelect = async (name: string) => {
+    // 保存当前日志库的查询状态
+    if (cacheKey) {
+      libCache.saveState(cacheKey, { queryStr, searching, records, rawResult, viewMode })
+    }
+
     setSelectedProject(name)
     setSelectedAlias(null)
+    setSearching(false)
     setRecords([])
     setRawResult(null)
     setProjectCreds(null)
     try {
       const aliases = await invoke<ImportAlias[]>('get_project_aliases', { projectName: name })
       setProjectAliases(aliases)
-      if (aliases.length > 0) setSelectedAlias(aliases[0].alias)
+      if (aliases.length > 0) {
+        // 切换并加载第一个日志库的缓存状态
+        const newKey = libCache.makeKey(name, aliases[0].alias)
+        const cached = libCache.loadState(newKey)
+        setSelectedAlias(aliases[0].alias)
+        setQueryStr(cached.queryStr)
+        setSearching(cached.searching)
+        setRecords(cached.records)
+        setRawResult(cached.rawResult)
+        setViewMode(cached.viewMode)
+      }
       // 加载 credentials，检查是否缺少 project_id
       const creds = await invoke<Record<string, unknown> | null>('get_project_credentials', { projectName: name })
       setProjectCreds(creds)
@@ -461,6 +491,8 @@ export default function CloudQueryView() {
         setRawResult(null)
         setProjectCreds(null)
       }
+      // 清除该项目的所有日志库缓存
+      libCache.clearByPrefix(name)
       await loadProjects()
       showToast(`已删除项目 ${name}`, 'success')
     } catch (e) {
@@ -544,6 +576,8 @@ export default function CloudQueryView() {
     if (!project) return
 
     const keyword = kw !== undefined ? kw : queryStr
+    /** 捕获查询发起时的日志库标识，用于竞态检查 */
+    const capturedKey = cacheKeyRef.current
 
     setSearching(true)
     setRecords([])
@@ -561,6 +595,33 @@ export default function CloudQueryView() {
         limit,
       })
       const parsed = typeof result === 'string' ? JSON.parse(result) : result
+
+      /** 竞态检查：如果查询期间用户切换了日志库，将结果存入缓存而非覆盖当前显示 */
+      if (cacheKeyRef.current !== capturedKey) {
+        if (capturedKey) {
+          try {
+            const rows = parseCloudResult(parsed)
+            libCache.saveState(capturedKey, {
+              queryStr: keyword,
+              searching: false,
+              records: rows,
+              rawResult: parsed,
+              viewMode,
+            })
+          } catch {
+            // 解析失败也保存错误信息
+            libCache.saveState(capturedKey, {
+              queryStr: keyword,
+              searching: false,
+              records: [],
+              rawResult: parsed,
+              viewMode,
+            })
+          }
+        }
+        return
+      }
+
       setRawResult(parsed)
       try {
         const rows = parseCloudResult(parsed)
@@ -571,10 +632,15 @@ export default function CloudQueryView() {
         setRecords([])
       }
     } catch (e) {
+      // 竞态检查：错误也只作用于对应的日志库
+      if (cacheKeyRef.current !== capturedKey) return
       showToast(`查询失败: ${String(e)}`, 'error')
       setRawResult({ error: String(e) })
     } finally {
-      setSearching(false)
+      // 仅当仍停留在查询发起时的日志库才更新 loading 状态
+      if (cacheKeyRef.current === capturedKey) {
+        setSearching(false)
+      }
     }
   }
 
@@ -697,7 +763,21 @@ export default function CloudQueryView() {
               {projectAliases.map((a) => (
                 <button
                   key={a.alias}
-                  onClick={() => setSelectedAlias(a.alias)}
+                  onClick={() => {
+                    // 保存当前日志库的查询状态
+                    if (cacheKey) {
+                      libCache.saveState(cacheKey, { queryStr, searching, records, rawResult, viewMode })
+                    }
+                    // 加载目标日志库的缓存状态
+                    const newKey = libCache.makeKey(currentProject!.name, a.alias)
+                    const cached = libCache.loadState(newKey)
+                    setSelectedAlias(a.alias)
+                    setQueryStr(cached.queryStr)
+                    setSearching(cached.searching)
+                    setRecords(cached.records)
+                    setRawResult(cached.rawResult)
+                    setViewMode(cached.viewMode)
+                  }}
                   className={`w-full text-left rounded px-2 py-1.5 text-xs transition-colors ${
                     selectedAlias === a.alias
                       ? 'bg-accent/20 text-accent'
@@ -844,7 +924,10 @@ export default function CloudQueryView() {
               )}
               {!!rawResult && (
                 <button
-                  onClick={() => { setRecords([]); setRawResult(null); setQueryStr('') }}
+                  onClick={() => {
+                    setRecords([]); setRawResult(null); setQueryStr('')
+                    if (cacheKey) libCache.clearState(cacheKey)
+                  }}
                   className="text-xs text-secondary hover:text-primary transition-colors"
                 >
                   清空
