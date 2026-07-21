@@ -723,31 +723,44 @@ pub async fn cloud_search_logs(
 #[tauri::command]
 pub async fn get_mcp_running_status() -> serde_json::Value {
     let pid_path = crate::paths::get_app_data_dir().join("mcp_server.pid");
-    if !pid_path.exists() {
-        return serde_json::json!({ "running": false });
+    let mut running = false;
+    let mut pid: Option<u32> = None;
+
+    // 方法 1: 检查 PID 文件
+    if pid_path.exists() {
+        if let Ok(pid_str) = std::fs::read_to_string(&pid_path) {
+            if let Ok(p) = pid_str.trim().parse::<u32>() {
+                let alive = std::process::Command::new("kill")
+                    .args(["-0", &p.to_string()])
+                    .output()
+                    .map(|o| o.status.success())
+                    .unwrap_or(false);
+                if alive {
+                    running = true;
+                    pid = Some(p);
+                } else {
+                    let _ = std::fs::remove_file(&pid_path);
+                }
+            }
+        }
     }
-    let pid_str = match std::fs::read_to_string(&pid_path) {
-        Ok(s) => s,
-        Err(_) => return serde_json::json!({ "running": false }),
-    };
-    let pid: u32 = match pid_str.trim().parse() {
-        Ok(p) => p,
-        Err(_) => return serde_json::json!({ "running": false }),
-    };
-    // kill -0：不发信号，仅检测进程是否存在（Unix）
-    let alive = std::process::Command::new("kill")
-        .args(["-0", &pid.to_string()])
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
-    if !alive {
-        let _ = std::fs::remove_file(&pid_path); // 清理过期 PID 文件
+
+    // 方法 2: 检查 HTTP 端口是否在监听（备选方案）
+    if !running {
+        if let Ok(stream) = std::net::TcpStream::connect_timeout(
+            &"127.0.0.1:19527".parse().unwrap(),
+            std::time::Duration::from_millis(200),
+        ) {
+            drop(stream);
+            running = true;
+        }
     }
-    // 如果进程存活，也返回最近一次调用的客户端和时间
+
     let last_event = crate::mcp::activity::read_all().into_iter().last();
     serde_json::json!({
-        "running": alive,
-        "pid": if alive { Some(pid) } else { None },
+        "running": running,
+        "pid": pid,
+        "port": if running && pid.is_none() { Some(19527u16) } else { None::<u16> },
         "last_active": last_event.as_ref().map(|e| &e.timestamp),
         "last_client": last_event.as_ref().and_then(|e| e.client_hint.as_ref()),
     })

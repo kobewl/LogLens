@@ -95,6 +95,7 @@ const ClientIcon = ({ clientId, size = 22 }: { clientId: string; size?: number }
 interface McpRunningStatus {
   running: boolean
   pid?: number
+  port?: number
   last_active?: string
   last_client?: string
 }
@@ -112,6 +113,7 @@ function McpStatusBadge({ status }: { status: McpRunningStatus | null }) {
         </span>
         运行中
         {status.pid && <span style={{ color: 'rgba(74,222,128,0.7)' }}>PID {status.pid}</span>}
+        {status.port && <span style={{ color: 'rgba(74,222,128,0.7)' }}>:19527</span>}
         {status.last_client && <span style={{ color: 'rgba(74,222,128,0.7)' }}>· {status.last_client}</span>}
       </div>
     )
@@ -222,8 +224,11 @@ function McpSetupPanel() {
       {
         mcpServers: {
           loglens: {
+            // stdio 方式（推荐）：AI 客户端自动管理进程
             command: selectedClient.executable_path || 'loglens',
             args: ['--mcp-server'],
+            // HTTP 方式（备选）：连接已运行的服务
+            // url: 'http://localhost:19527/mcp',
           },
         },
       },

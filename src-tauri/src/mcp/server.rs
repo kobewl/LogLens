@@ -183,3 +183,107 @@ fn handle_initialize() -> Result<Value, JsonRpcError> {
     };
     Ok(serde_json::to_value(result).unwrap())
 }
+
+// ── HTTP 传输模式（GUI 自动启动用）──────────────────────────────────────────────
+
+use std::net::TcpListener;
+
+/// 启动 MCP 服务器（HTTP 模式），监听 localhost 指定端口
+pub async fn run_mcp_server_http(port: u16) {
+    let addr = format!("127.0.0.1:{}", port);
+    let listener = match TcpListener::bind(&addr) {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("[LogLens MCP HTTP] 无法绑定端口 {}: {}", port, e);
+            return;
+        }
+    };
+
+    // 写 PID 文件
+    let _ = crate::paths::ensure_dirs();
+    let _ = std::fs::write(pid_path(), std::process::id().to_string());
+
+    eprintln!("[LogLens MCP HTTP] 服务已启动: http://{}", addr);
+
+    let index_mgr = Arc::new(IndexManager::new());
+    // 使用一个简单的 HTTP 处理循环
+    // 注意：为了保持依赖简单，我们使用原生 TCP + 手动 HTTP 解析
+    for stream in listener.incoming() {
+        match stream {
+            Ok(mut stream) => {
+                let index_mgr = index_mgr.clone();
+                tokio::task::spawn_blocking(move || {
+                    use std::io::{BufRead, BufReader, Write};
+                    let mut reader = BufReader::new(&mut stream);
+                    let mut headers = Vec::new();
+                    let mut content_length: usize = 0;
+
+                    // 读取 HTTP 请求头
+                    loop {
+                        let mut line = String::new();
+                        if reader.read_line(&mut line).is_err() {
+                            return;
+                        }
+                        if line == "\r\n" || line == "\n" || line.is_empty() {
+                            break;
+                        }
+                        if line.to_lowercase().starts_with("content-length:") {
+                            content_length = line
+                                .split(':')
+                                .nth(1)
+                                .and_then(|s| s.trim().parse().ok())
+                                .unwrap_or(0);
+                        }
+                        headers.push(line);
+                    }
+
+                    // 读取请求体
+                    let mut body = vec![0u8; content_length];
+                    if content_length > 0 {
+                        use std::io::Read;
+                        let _ = reader.read_exact(&mut body);
+                    }
+
+                    let body_str = String::from_utf8_lossy(&body);
+                    let response_json = match serde_json::from_str::<JsonRpcRequest>(&body_str) {
+                        Ok(request) => {
+                            let rt = tokio::runtime::Runtime::new().unwrap();
+                            let hint = Arc::new(Mutex::new(None::<String>));
+                            match rt.block_on(handle_request(request, &index_mgr, hint)) {
+                                Some(resp) => serde_json::to_string(&resp).unwrap_or_default(),
+                                None => "{}".to_string(),
+                            }
+                        }
+                        Err(e) => {
+                            serde_json::to_string(&JsonRpcResponse {
+                                jsonrpc: "2.0".to_string(),
+                                id: None,
+                                result: None,
+                                error: Some(JsonRpcError {
+                                    code: -32700,
+                                    message: format!("Parse error: {}", e),
+                                    data: None,
+                                }),
+                            })
+                            .unwrap_or_default()
+                        }
+                    };
+
+                    let response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nAccess-Control-Allow-Origin: *\r\n\r\n{}",
+                        response_json.len(),
+                        response_json
+                    );
+                    let _ = stream.write_all(response.as_bytes());
+                });
+            }
+            Err(e) => {
+                eprintln!("[LogLens MCP HTTP] 连接错误: {}", e);
+            }
+        }
+    }
+
+    // 清理
+    let _ = std::fs::remove_file(pid_path());
+    eprintln!("[LogLens MCP HTTP] 服务已停止。");
+}

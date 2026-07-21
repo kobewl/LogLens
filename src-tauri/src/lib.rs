@@ -16,27 +16,41 @@ pub mod updater;
 use commands::AppState;
 use index::IndexManager;
 use mcp::install::{get_mcp_status, install_mcp_config};
-use std::sync::Arc;
+use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
 use tauri::Manager;
+
+/// 默认 MCP HTTP 端口
+const MCP_HTTP_PORT: u16 = 19527;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let args = cli::parse();
 
-    if args.mcp_server {
+    // MCP 服务器模式（stdio 或 HTTP）
+    if args.mcp_server || args.mcp_http_port.is_some() {
         let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
-        rt.block_on(mcp::run_mcp_server());
+        if let Some(port) = args.mcp_http_port {
+            rt.block_on(mcp::run_mcp_server_http(port));
+        } else {
+            rt.block_on(mcp::run_mcp_server());
+        }
         return;
     }
 
-    tauri::Builder::default()
+    // ── GUI 模式：自动启动 MCP HTTP 子进程 ──
+    let mcp_child = start_mcp_http_subprocess();
+    let mcp_child = Arc::new(Mutex::new(mcp_child));
+    let mcp_child_clone = mcp_child.clone();
+
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .setup(|app| {
+        .setup(move |app| {
             let rt = tokio::runtime::Runtime::new().expect("runtime");
             let db = rt
                 .block_on(config::init_db())
@@ -87,6 +101,51 @@ pub fn run() {
             updater::download_and_install_update,
             updater::get_installation_source,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    // 启动应用并在退出时清理 MCP 子进程
+    app.run(move |_app_handle, event| {
+        if let tauri::RunEvent::Exit = event {
+            if let Ok(mut guard) = mcp_child_clone.lock() {
+                if let Some(ref mut child) = *guard {
+                    let _ = child.kill();
+                    eprintln!("[LogLens] MCP 子进程已终止");
+                }
+            }
+        }
+    });
+}
+
+/// 启动 MCP HTTP 子进程（后台运行，通过 localhost 端口通信）
+fn start_mcp_http_subprocess() -> Option<Child> {
+    let exe = match std::env::current_exe() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("[LogLens] 无法获取可执行文件路径: {}", e);
+            return None;
+        }
+    };
+
+    match Command::new(&exe)
+        .arg("--mcp-http-port")
+        .arg(MCP_HTTP_PORT.to_string())
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        Ok(child) => {
+            eprintln!(
+                "[LogLens] MCP HTTP 子进程已启动 (PID {}, port {})",
+                child.id(),
+                MCP_HTTP_PORT
+            );
+            Some(child)
+        }
+        Err(e) => {
+            eprintln!("[LogLens] 无法启动 MCP HTTP 子进程: {}", e);
+            None
+        }
+    }
 }

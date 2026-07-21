@@ -5,4 +5,4 @@ pub mod server;
 pub mod tools;
 
 pub use install::{get_mcp_status, install_mcp_config};
-pub use server::run_mcp_server;
+pub use server::{run_mcp_server, run_mcp_server_http};
