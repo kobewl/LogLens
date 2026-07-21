@@ -106,7 +106,11 @@ export default function AiChatPanel({
         </div>
         {messages.length > 0 && (
           <button
-            onClick={() => setMessages([])}
+            onClick={() => {
+              if (window.confirm('确定要清空所有对话记录吗？此操作不可撤销。')) {
+                setMessages([])
+              }
+            }}
             title="清空对话"
             className="flex items-center gap-1 text-[10px] text-muted hover:text-error transition-colors"
           >
@@ -152,7 +156,11 @@ export default function AiChatPanel({
                   ? () => {
                       // Extract query from code block
                       const m = msg.content.match(/```\n([\s\S]+?)\n```/)
-                      if (m) onApplyQuery?.(m[1].trim())
+                      if (m) {
+                        onApplyQuery?.(m[1].trim())
+                      } else {
+                        showToast('AI 回复中未找到可应用的查询语句', 'error')
+                      }
                     }
                   : undefined
               }

@@ -37,7 +37,9 @@ export default function Workspace() {
   useEffect(() => {
     if (!currentFile) return
     loadInitial()
-    invoke<LogStats>('get_log_stats', { path: currentFile.path }).then(setStats)
+    invoke<LogStats>('get_log_stats', { path: currentFile.path })
+      .then(setStats)
+      .catch((e) => console.error('获取日志统计失败:', e))
   }, [currentFile, loadInitial])
 
   const handleOpen = useCallback(async (path?: string) => {
@@ -218,9 +220,16 @@ export default function Workspace() {
                 onQueryChange={setQuery}
                 onSearch={() => search()}
                 onAiQuery={async () => {
-                  const q = await naturalQuery(query || 'show all errors')
-                  setQuery(q.trim())
-                  search(q.trim())
+                  try {
+                    const q = await naturalQuery(query || 'show all errors')
+                    const trimmed = q?.trim?.() ?? ''
+                    if (trimmed) {
+                      setQuery(trimmed)
+                      search(trimmed)
+                    }
+                  } catch (e) {
+                    showToast(String(e), 'error')
+                  }
                 }}
                 loading={loading}
               />
@@ -259,7 +268,14 @@ export default function Workspace() {
               onAnalyze={analyze}
               onSummarize={summarize}
               onNaturalQuery={naturalQuery}
-              onApplyQuery={(q) => { setQuery(q); search(q) }}
+              onApplyQuery={(q) => {
+                try {
+                  setQuery(q)
+                  search(q)
+                } catch (e) {
+                  showToast(String(e), 'error')
+                }
+              }}
             />
           </aside>
         ) : (

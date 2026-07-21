@@ -6,6 +6,8 @@ import Workspace from './pages/Workspace'
 import Settings from './pages/Settings'
 import McpPage from './pages/McpPage'
 import ToolsPage from './pages/ToolsPage'
+import { UpdateProvider } from './contexts/UpdateContext'
+import UpdateNotificationModal from './components/modals/UpdateNotificationModal'
 
 // ─── Theme Context ─────────────────────────────────────────────────────────────
 type Theme = 'dark' | 'light'
@@ -60,15 +62,18 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <ThemeProvider>
-      <Routes>
-        <Route element={<MainLayout />}>
-          <Route path="/" element={<Welcome />} />
-          <Route path="/workspace" element={<Workspace />} />
-          <Route path="/mcp" element={<McpPage />} />
-          <Route path="/tools" element={<ToolsPage />} />
-          <Route path="/settings" element={<Settings />} />
-        </Route>
-      </Routes>
+      <UpdateProvider>
+        <Routes>
+          <Route element={<MainLayout />}>
+            <Route path="/" element={<Welcome />} />
+            <Route path="/workspace" element={<Workspace />} />
+            <Route path="/mcp" element={<McpPage />} />
+            <Route path="/tools" element={<ToolsPage />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
+        </Routes>
+        <UpdateNotificationModal />
+      </UpdateProvider>
     </ThemeProvider>
   )
 }

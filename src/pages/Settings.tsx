@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { getVersion } from '@tauri-apps/api/app'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { useUpdate } from '../contexts/UpdateContext'
 import {
   BotMessageSquare,
   CheckCircle2,
@@ -173,12 +174,19 @@ function AiTab() {
     ]).then(([ai, cfg]) => {
       setAiProviders(ai)
       setConfig(cfg)
+      // 回退到第一个可用 provider，防止 deepseek 不在列表中
       const provider = ai.find((p) => p.id === 'deepseek') ?? ai[0]
+      if (ai.length > 0 && !ai.find((p) => p.id === aiTab)) {
+        setAiTab(ai[0].id)
+      }
       setAiForm({
         api_key: '',
         base_url: cfg.ai.base_url || provider?.baseUrl || '',
         model: cfg.ai.model || provider?.defaultModel || '',
       })
+    }).catch((e) => {
+      console.error('加载 AI 配置失败:', e)
+      showToast('加载 AI 配置失败，请检查应用是否正常运行', 'error')
     })
   }, [])
 
@@ -208,8 +216,12 @@ function AiTab() {
 
   const saveAi = async () => {
     if (!config) return
-    await invoke('save_app_config', { config: { ...config, ai: buildAiConfig() } })
-    showToast('AI 配置已保存', 'success')
+    try {
+      await invoke('save_app_config', { config: { ...config, ai: buildAiConfig() } })
+      showToast('AI 配置已保存', 'success')
+    } catch (e) {
+      showToast(`保存失败: ${e}`, 'error')
+    }
   }
 
   return (
@@ -336,7 +348,12 @@ function CloudTab() {
   const [cloudTesting, setCloudTesting] = useState(false)
 
   useEffect(() => {
-    invoke<CloudProviderInfo[]>('get_cloud_providers').then(setCloudProviders)
+    invoke<CloudProviderInfo[]>('get_cloud_providers')
+      .then(setCloudProviders)
+      .catch((e) => {
+        console.error('加载云服务商列表失败:', e)
+        showToast('加载云服务商列表失败', 'error')
+      })
   }, [])
 
   const testCloud = async () => {
@@ -360,16 +377,20 @@ function CloudTab() {
   }
 
   const saveCloud = async () => {
-    await invoke('save_cloud_credentials', {
-      creds: {
-        provider: cloudTab,
-        access_key_id: cloudForm.access_key_id,
-        access_key_secret: cloudForm.access_key_secret,
-        region: cloudForm.region,
-        project_id: cloudForm.project_id,
-      } as CloudCredentials,
-    })
-    showToast('云日志凭据已保存', 'success')
+    try {
+      await invoke('save_cloud_credentials', {
+        creds: {
+          provider: cloudTab,
+          access_key_id: cloudForm.access_key_id,
+          access_key_secret: cloudForm.access_key_secret,
+          region: cloudForm.region,
+          project_id: cloudForm.project_id,
+        } as CloudCredentials,
+      })
+      showToast('云日志凭据已保存', 'success')
+    } catch (e) {
+      showToast(`保存失败: ${e}`, 'error')
+    }
   }
 
   const hint = CLOUD_HINTS[cloudTab] ?? CLOUD_HINTS['aliyun']
@@ -625,6 +646,7 @@ function AppearanceTab() {
               label="日志级别颜色"
               hint="不同级别使用不同颜色高亮显示"
               defaultChecked={true}
+              storageKey="level-colors"
               icon={
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
@@ -635,6 +657,7 @@ function AppearanceTab() {
               label="时间戳显示"
               hint="在日志行前显示详细时间戳"
               defaultChecked={true}
+              storageKey="show-timestamp"
               icon={
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10" />
@@ -933,57 +956,28 @@ function AppearanceToggle({
 // About Tab
 // ─────────────────────────────────────────────────────────
 function AboutTab() {
-  const [updateState, setUpdateState] = useState<'idle' | 'checking' | 'available' | 'uptodate' | 'error'>('idle')
-  const [latestVersion, setLatestVersion] = useState('')
-  const [downloadUrl, setDownloadUrl] = useState('')
   const [currentVersion, setCurrentVersion] = useState('0.0.0')
 
   useEffect(() => {
     getVersion().then(setCurrentVersion).catch(() => setCurrentVersion('0.0.0'))
   }, [])
 
-  // 版本加载完成后自动检查更新
-  useEffect(() => {
-    if (currentVersion !== '0.0.0') {
-      checkUpdate()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentVersion])
+  const {
+    updateInfo,
+    isChecking,
+    isUpToDate,
+    error,
+    installationSource,
+    checkForUpdates,
+  } = useUpdate()
 
-  const checkUpdate = async () => {
-    // 版本尚未加载时不检查，避免误报
-    if (currentVersion === '0.0.0') return
-    setUpdateState('checking')
-    try {
-      const res = await fetch('https://api.github.com/repos/kobewl/LogLens/releases/latest')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      const tag = (data.tag_name || '').replace(/^v/, '')
-      const htmlUrl = data.html_url || 'https://github.com/kobewl/LogLens/releases'
-
-      if (tag && tag !== currentVersion) {
-        setLatestVersion(tag)
-        setDownloadUrl(htmlUrl)
-        setUpdateState('available')
-      } else {
-        setUpdateState('uptodate')
-      }
-    } catch (e) {
-      console.error('检查更新失败:', e)
-      setUpdateState('error')
-    }
-  }
-
-  // 在浏览器中打开下载页面
-  const handleOpenDownload = useCallback(async () => {
-    if (!downloadUrl) return
-    try {
-      await openUrl(downloadUrl)
-    } catch {
-      // 降级方案：用 window.open
-      window.open(downloadUrl, '_blank', 'noopener,noreferrer')
-    }
-  }, [downloadUrl])
+  // 推导更新状态
+  const updateState: 'idle' | 'checking' | 'available' | 'uptodate' | 'error' =
+    isChecking ? 'checking'
+    : error ? 'error'
+    : updateInfo ? 'available'
+    : isUpToDate ? 'uptodate'
+    : 'idle'
 
   return (
     <TabLayout title="关于 LogLens" icon={<Info size={18} />}>
@@ -1111,95 +1105,112 @@ function AboutTab() {
       {/* ── 检查更新 ── */}
       <SettingGroup title="版本更新">
         <div className="p-4">
-          <div
-            className="flex items-center justify-between p-4 rounded-xl"
-            style={{
-              background: 'var(--bg-overlay)',
-              border: '1px solid var(--border-default)',
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="flex h-10 w-10 items-center justify-center rounded-xl"
+          {/* 包管理器提示 */}
+          {installationSource && (
+            <div
+              className="mb-4 rounded-lg px-4 py-3 text-sm flex items-center gap-2"
+              style={{
+                background: 'rgba(234, 179, 8, 0.1)',
+                color: '#eab308',
+                border: '1px solid rgba(234, 179, 8, 0.25)',
+              }}
+            >
+              <Info size={14} />
+              此版本由 {installationSource} 管理，请使用系统包管理器更新。
+            </div>
+          )}
+
+          {!installationSource && (
+            <div
+              className="flex items-center justify-between p-4 rounded-xl"
+              style={{
+                background: 'var(--bg-overlay)',
+                border: '1px solid var(--border-default)',
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-xl"
+                  style={{
+                    background: updateState === 'available'
+                      ? 'rgba(16, 185, 129, 0.15)'
+                      : updateState === 'uptodate'
+                      ? 'rgba(59, 130, 246, 0.15)'
+                      : 'var(--surface-hover)',
+                    color: updateState === 'available'
+                      ? '#10b981'
+                      : updateState === 'uptodate'
+                      ? '#3b82f6'
+                      : 'var(--text-secondary)',
+                  }}
+                >
+                  {updateState === 'checking' ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : updateState === 'available' ? (
+                    <Download size={18} />
+                  ) : (
+                    <RefreshCw size={18} />
+                  )}
+                </div>
+                <div>
+                  <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {updateState === 'checking' && '正在检查更新…'}
+                    {updateState === 'uptodate' && '已是最新版本'}
+                    {updateState === 'available' && `发现新版本 v${updateInfo?.latestVersion}`}
+                    {updateState === 'error' && `检查失败: ${error}`}
+                    {updateState === 'idle' && '检查是否有新版本可用'}
+                  </div>
+                  {updateState === 'available' && updateInfo?.releaseUrl && (
+                    <a
+                      href={updateInfo.releaseUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs flex items-center gap-1 mt-1 hover:underline transition-colors duration-200"
+                      style={{ color: '#60a5fa' }}
+                    >
+                      <Download size={11} /> 前往下载
+                    </a>
+                  )}
+                  {updateState === 'uptodate' && (
+                    <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                      当前版本 {currentVersion}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => checkForUpdates(true)}
+                disabled={updateState === 'checking'}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
                 style={{
                   background: updateState === 'available'
-                    ? 'rgba(16, 185, 129, 0.15)'
-                    : updateState === 'uptodate'
-                    ? 'rgba(59, 130, 246, 0.15)'
-                    : 'var(--surface-hover)',
-                  color: updateState === 'available'
-                    ? '#10b981'
-                    : updateState === 'uptodate'
-                    ? '#3b82f6'
-                    : 'var(--text-secondary)',
+                    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                    : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  color: 'white',
+                  boxShadow: updateState === 'available'
+                    ? '0 4px 12px rgba(16, 185, 129, 0.3)'
+                    : '0 4px 12px rgba(59, 130, 246, 0.3)',
                 }}
               >
                 {updateState === 'checking' ? (
-                  <Loader2 size={18} className="animate-spin" />
+                  <>
+                    <Loader2 size={12} className="animate-spin" />
+                    检查中
+                  </>
                 ) : updateState === 'available' ? (
-                  <Download size={18} />
+                  <>
+                    <RefreshCw size={12} />
+                    重新检查
+                  </>
                 ) : (
-                  <RefreshCw size={18} />
+                  <>
+                    <RefreshCw size={12} />
+                    检查更新
+                  </>
                 )}
-              </div>
-              <div>
-                <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                  {updateState === 'checking' && '正在检查更新…'}
-                  {updateState === 'uptodate' && '已是最新版本'}
-                  {updateState === 'available' && `发现新版本 v${latestVersion}`}
-                  {updateState === 'error' && '检查失败，请稍后重试'}
-                  {(updateState === 'idle') && '检查是否有新版本可用'}
-                </div>
-                {updateState === 'available' && (
-                  <a
-                    href={downloadUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs flex items-center gap-1 mt-1 hover:underline transition-colors duration-200"
-                    style={{ color: '#60a5fa' }}
-                  >
-                    <Download size={11} /> 前往下载
-                  </a>
-                )}
-                {updateState === 'uptodate' && (
-                  <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                    当前版本 {currentVersion}
-                  </div>
-                )}
-              </div>
+              </button>
             </div>
-            <button
-              onClick={updateState === 'available' ? handleOpenDownload : checkUpdate}
-              disabled={updateState === 'checking'}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
-              style={{
-                background: updateState === 'available'
-                  ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                  : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                color: 'white',
-                boxShadow: updateState === 'available'
-                  ? '0 4px 12px rgba(16, 185, 129, 0.3)'
-                  : '0 4px 12px rgba(59, 130, 246, 0.3)',
-              }}
-            >
-              {updateState === 'checking' ? (
-                <>
-                  <Loader2 size={12} className="animate-spin" />
-                  检查中
-                </>
-              ) : updateState === 'available' ? (
-                <>
-                  <Download size={12} />
-                  立即更新
-                </>
-              ) : (
-                <>
-                  <RefreshCw size={12} />
-                  检查更新
-                </>
-              )}
-            </button>
-          </div>
+          )}
         </div>
       </SettingGroup>
 

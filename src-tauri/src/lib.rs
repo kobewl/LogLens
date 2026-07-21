@@ -11,6 +11,7 @@ pub mod parser;
 pub mod paths;
 pub mod stats;
 pub mod stream;
+pub mod updater;
 
 use commands::AppState;
 use index::IndexManager;
@@ -34,6 +35,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let rt = tokio::runtime::Runtime::new().expect("runtime");
             let db = rt
@@ -81,6 +83,9 @@ pub fn run() {
             commands::clear_mcp_activity,
             get_mcp_status,
             install_mcp_config,
+            updater::check_for_updates,
+            updater::download_and_install_update,
+            updater::get_installation_source,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
