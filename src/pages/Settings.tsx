@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { getVersion } from '@tauri-apps/api/app'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import {
   BotMessageSquare,
   CheckCircle2,
@@ -963,6 +964,17 @@ function AboutTab() {
     }
   }
 
+  // 在浏览器中打开下载页面
+  const handleOpenDownload = useCallback(async () => {
+    if (!downloadUrl) return
+    try {
+      await openUrl(downloadUrl)
+    } catch {
+      // 降级方案：用 window.open
+      window.open(downloadUrl, '_blank', 'noopener,noreferrer')
+    }
+  }, [downloadUrl])
+
   return (
     <TabLayout title="关于 LogLens" icon={<Info size={18} />}>
       {/* ── Hero Section ── */}
@@ -1147,7 +1159,7 @@ function AboutTab() {
               </div>
             </div>
             <button
-              onClick={checkUpdate}
+              onClick={updateState === 'available' ? handleOpenDownload : checkUpdate}
               disabled={updateState === 'checking'}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
               style={{
