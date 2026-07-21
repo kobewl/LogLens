@@ -80,7 +80,24 @@
 
 ## 🚀 快速开始
 
-### 环境要求
+### 下载安装
+
+从 [GitHub Releases](https://github.com/kobewl/LogLens/releases/latest) 下载对应平台的安装包：
+
+| 平台 | 文件 | 安装方式 |
+|------|------|---------|
+| 🍎 macOS (Apple Silicon) | `LogLens_aarch64.dmg` | 拖入 Applications |
+| 🍎 macOS (Intel) | `LogLens_x64.dmg` | 拖入 Applications |
+| 🪟 Windows | `LogLens_x64-setup.exe` / `.msi` | 双击安装 |
+
+> **macOS 注意：首次打开时可能提示「LogLens 已损坏，无法打开」**
+> 这是 Gatekeeper 安全检查，因为应用尚未获得 Apple 代码签名。执行以下命令后重新打开：
+> ```bash
+> xattr -cr /Applications/LogLens.app
+> ```
+> 或右键点击 LogLens.app → 选择「打开」→ 在弹窗中点「打开」。
+
+### 开发者环境
 
 - **Node.js** >= 18
 - **pnpm** >= 9（安装：`npm install -g pnpm`）
