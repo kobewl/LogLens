@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { getVersion } from '@tauri-apps/api/app'
 import {
   BotMessageSquare,
   CheckCircle2,
@@ -934,7 +935,11 @@ function AboutTab() {
   const [updateState, setUpdateState] = useState<'idle' | 'checking' | 'available' | 'uptodate' | 'error'>('idle')
   const [latestVersion, setLatestVersion] = useState('')
   const [downloadUrl, setDownloadUrl] = useState('')
-  const currentVersion = '0.1.0'
+  const [currentVersion, setCurrentVersion] = useState('0.0.0')
+
+  useEffect(() => {
+    getVersion().then(setCurrentVersion).catch(() => setCurrentVersion('0.0.0'))
+  }, [])
 
   const checkUpdate = async () => {
     setUpdateState('checking')
