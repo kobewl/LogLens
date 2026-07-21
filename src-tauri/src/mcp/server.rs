@@ -178,7 +178,7 @@ fn handle_initialize() -> Result<Value, JsonRpcError> {
         },
         server_info: ServerInfo {
             name: "loglens-mcp".to_string(),
-            version: "0.4.0".to_string(),
+            version: "0.5.0".to_string(),
         },
     };
     Ok(serde_json::to_value(result).unwrap())

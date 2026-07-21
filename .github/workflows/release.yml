@@ -1,0 +1,250 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v0.5.0)'
+        required: true
+
+jobs:
+  # ─── macOS ARM (Apple Silicon M1/M2/M3) ──────────────────────────────────────
+  build-macos-aarch64:
+    name: macOS ARM (Apple Silicon)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: '10'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Install frontend deps
+        run: pnpm install
+
+      - name: Build Tauri (macOS ARM)
+        run: pnpm tauri build --target aarch64-apple-darwin
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        continue-on-error: true
+
+      - name: Find build artifacts
+        id: find
+        run: |
+          echo "dmg=$(ls src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg 2>/dev/null | head -1 || echo '')" >> $GITHUB_OUTPUT
+          echo "latest_json=$(ls src-tauri/target/aarch64-apple-darwin/release/bundle/macos/latest.json 2>/dev/null | head -1 || echo '')" >> $GITHUB_OUTPUT
+
+      - name: Upload DMG
+        if: steps.find.outputs.dmg != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-aarch64
+          path: ${{ steps.find.outputs.dmg }}
+
+      - name: Upload latest.json
+        if: steps.find.outputs.latest_json != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: latest-json-aarch64
+          path: ${{ steps.find.outputs.latest_json }}
+
+  # ─── macOS Intel (x86_64) ────────────────────────────────────────────────────
+  build-macos-x86_64:
+    name: macOS Intel (x86_64)
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: '10'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - name: Install frontend deps
+        run: pnpm install
+
+      - name: Build Tauri (macOS Intel)
+        run: pnpm tauri build --target x86_64-apple-darwin
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        continue-on-error: true
+
+      - name: Find build artifacts
+        id: find
+        run: |
+          echo "dmg=$(ls src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg 2>/dev/null | head -1 || echo '')" >> $GITHUB_OUTPUT
+          echo "latest_json=$(ls src-tauri/target/x86_64-apple-darwin/release/bundle/macos/latest.json 2>/dev/null | head -1 || echo '')" >> $GITHUB_OUTPUT
+
+      - name: Upload DMG
+        if: steps.find.outputs.dmg != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-x86_64
+          path: ${{ steps.find.outputs.dmg }}
+
+      - name: Upload latest.json
+        if: steps.find.outputs.latest_json != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: latest-json-x86_64
+          path: ${{ steps.find.outputs.latest_json }}
+
+  # ─── Windows (x86_64) ────────────────────────────────────────────────────────
+  build-windows:
+    name: Windows (x86_64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: '10'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install frontend deps
+        run: pnpm install
+
+      - name: Build Tauri (Windows)
+        run: pnpm tauri build --target x86_64-pc-windows-msvc
+        continue-on-error: true
+
+      - name: Find build artifacts
+        id: find
+        shell: bash
+        run: |
+          echo "msi=$(ls src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi 2>/dev/null | head -1 || echo '')" >> $GITHUB_OUTPUT
+          echo "exe=$(ls src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe 2>/dev/null | head -1 || echo '')" >> $GITHUB_OUTPUT
+          echo "latest_json=$(ls src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/latest.json 2>/dev/null | head -1 || echo '')" >> $GITHUB_OUTPUT
+
+      - name: Upload MSI
+        if: steps.find.outputs.msi != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86_64-msi
+          path: ${{ steps.find.outputs.msi }}
+
+      - name: Upload EXE
+        if: steps.find.outputs.exe != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86_64-exe
+          path: ${{ steps.find.outputs.exe }}
+
+      - name: Upload latest.json
+        if: steps.find.outputs.latest_json != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: latest-json-windows
+          path: ${{ steps.find.outputs.latest_json }}
+
+  # ─── Create Release & Upload Artifacts ───────────────────────────────────────
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build-macos-aarch64, build-macos-x86_64, build-windows]
+    if: always() && !cancelled()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure
+        run: ls -R artifacts/
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          # Copy all dmg/msi/exe files to release-assets
+          find artifacts -name "*.dmg" -exec cp {} release-assets/ \;
+          find artifacts -name "*.msi" -exec cp {} release-assets/ \;
+          find artifacts -name "*.exe" -exec cp {} release-assets/ \;
+          ls -la release-assets/
+
+      - name: Get version from tag
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          echo '## 下载' > release-notes.md
+          echo '' >> release-notes.md
+          echo '| 平台 | 架构 | 文件 |' >> release-notes.md
+          echo '|------|------|------|' >> release-notes.md
+          for f in release-assets/*; do
+            name=$(basename "$f")
+            size=$(du -h "$f" | cut -f1)
+            if [[ "$name" == *"aarch64"* ]] || [[ "$name" == *"arm"* ]]; then
+              echo "| macOS | ARM (M1/M2/M3) | $name ($size) |" >> release-notes.md
+            elif [[ "$name" == *"x64"* ]] || [[ "$name" == *"x86_64"* ]] && [[ "$name" == *".dmg"* ]]; then
+              echo "| macOS | Intel | $name ($size) |" >> release-notes.md
+            elif [[ "$name" == *".msi"* ]]; then
+              echo "| Windows | x86_64 | $name ($size) |" >> release-notes.md
+            elif [[ "$name" == *".exe"* ]]; then
+              echo "| Windows | x86_64 | $name ($size) |" >> release-notes.md
+            fi
+          done
+          cat release-notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body_path: release-notes.md
+          files: release-assets/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

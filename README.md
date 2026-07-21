@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-blue" alt="Platform" />
   <img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="License" />
-  <img src="https://img.shields.io/badge/version-0.4.0-purple" alt="Version" />
+  <img src="https://img.shields.io/badge/version-0.5.0-purple" alt="Version" />
   <img src="https://img.shields.io/badge/MCP-8%20tools-orange" alt="MCP Tools" />
 </p>
 
